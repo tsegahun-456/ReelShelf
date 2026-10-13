@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<article class="movie-card" th:fragment="card(movie)">
+  <a class="poster-link" th:href="${movie.detailsPath}">
+    <img class="poster" th:if="${!#strings.isEmpty(movie.posterPath)}"
+         th:src="|https://image.tmdb.org/t/p/w500${movie.posterPath}|"
+         th:alt="|${movie.title} poster|" loading="lazy">
+    <div class="poster poster-placeholder" th:unless="${!#strings.isEmpty(movie.posterPath)}" aria-label="Poster unavailable">
+      <span>MW</span>
+    </div>
+  </a>
+  <div class="movie-card-info">
+    <div class="movie-title-row">
+      <a class="movie-title" th:href="${movie.detailsPath}" th:text="${movie.title}">Movie title</a>
+      <span class="rating" th:if="${movie.rating != null and movie.rating.signum() > 0}">
+        <span aria-hidden="true">★</span><span th:text="${#numbers.formatDecimal(movie.rating, 1, 1)}">8.0</span>
+      </span>
+    </div>
+    <p class="movie-year"><span th:text="${movie.mediaType == 'TV' ? 'SERIES' : 'MOVIE'}">MOVIE</span><span aria-hidden="true"> · </span><span th:text="${#strings.length(movie.releaseDate) >= 4 ? #strings.substring(movie.releaseDate, 0, 4) : 'Release date unavailable'}">2026</span></p>
+    <form th:if="${signedIn}" th:action="@{/watchlist/add}" method="post">
+      <input type="hidden" name="movieId" th:value="${movie.id}">
+      <input type="hidden" name="mediaType" th:value="${movie.mediaType}">
+      <button class="save-button" type="submit"><span aria-hidden="true">＋</span> Add to list</button>
+    </form>
+    <a class="save-button" th:unless="${signedIn}" th:href="@{/login}"><span aria-hidden="true">＋</span> Sign in to save</a>
+  </div>
+</article>
+</body>
+</html>

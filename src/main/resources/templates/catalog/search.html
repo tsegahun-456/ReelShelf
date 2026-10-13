@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Search · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content">
+  <p class="eyebrow">THE MOVIE & SERIES CATALOG</p>
+  <h1 class="page-title">Search <span>and discover.</span></h1>
+  <p class="page-lede">Look up movies or series, explore the details, and add them to your list.</p>
+  <form class="search-bar search-bar-large" th:action="@{/search}" method="get" role="search">
+    <label class="sr-only" for="catalog-search">Search titles</label>
+    <span class="search-symbol" aria-hidden="true">⌕</span>
+    <input id="catalog-search" type="search" name="q" th:value="${query}" placeholder="Try a title like Dune or The Last of Us" autofocus>
+    <label class="sr-only" for="catalog-type">Catalog type</label>
+    <select id="catalog-type" class="media-type" name="type"><option value="MOVIE" th:selected="${type == 'MOVIE'}">Movies</option><option value="TV" th:selected="${type == 'TV'}">Series</option></select>
+    <button class="button" type="submit">Search</button>
+    <div class="catalog-filters">
+      <label>Genre<select name="genre"><option value="">Any genre</option><option th:each="item : ${genres}" th:value="${item.id}" th:selected="${selectedGenre == item.id}" th:text="${item.name}">Drama</option></select></label>
+      <label>Year<select name="year"><option value="">Any year</option><option th:each="item : ${years}" th:value="${item}" th:selected="${selectedYear == item}" th:text="${item}">2026</option></select></label>
+      <label>Minimum rating<select name="rating"><option value="">Any rating</option><option value="5" th:selected="${selectedRating == '5'}">5+</option><option value="6" th:selected="${selectedRating == '6'}">6+</option><option value="7" th:selected="${selectedRating == '7'}">7+</option><option value="8" th:selected="${selectedRating == '8'}">8+</option></select></label>
+    </div>
+  </form>
+  <p class="notice" th:if="${catalogMessage}" th:text="${catalogMessage}">Catalog message</p>
+  <section class="section-block search-results" th:if="${!#lists.isEmpty(results)}">
+    <div class="section-heading"><div><p class="eyebrow">RESULTS</p><h2 th:text="${#strings.isEmpty(query) ? 'Discover titles' : 'Matches for “' + query + '”'}">Search results</h2></div>
+      <span class="section-meta" th:text="${#lists.size(results)} + ' titles'">0 titles</span></div>
+    <div class="movie-grid">
+      <th:block th:each="movie : ${results}">
+        <div th:replace="~{fragments/movie-card :: card(${movie})}"></div>
+      </th:block>
+    </div>
+  </section>
+  <div class="empty-panel search-empty" th:if="${#strings.isEmpty(query) and selectedGenre == null and selectedYear == null and #strings.isEmpty(selectedRating) and #lists.isEmpty(results) and #strings.isEmpty(catalogMessage)}">
+    <div class="empty-icon" aria-hidden="true">⌕</div><h3>What are you in the mood for?</h3>
+    <p>Search a title or choose genre, year, and rating filters.</p>
+  </div>
+  <div class="empty-panel search-empty" th:if="${(!#strings.isEmpty(query) or selectedGenre != null or selectedYear != null or !#strings.isEmpty(selectedRating)) and #lists.isEmpty(results) and #strings.isEmpty(catalogMessage)}">
+    <div class="empty-icon" aria-hidden="true">✦</div><h3>No titles found</h3><p>Try different filters, another title, or a shorter search.</p>
+  </div>
+</main>
+</body>
+</html>

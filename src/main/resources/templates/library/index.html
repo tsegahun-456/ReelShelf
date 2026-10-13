@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#100d11">
+  <title>My media library · Movie Watchlist</title><link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content local-library">
+  <p class="eyebrow">YOUR FILES · AUTO SCAN</p>
+  <div class="section-heading list-heading"><div><h1 class="page-title">My <span>library.</span></h1>
+    <p class="page-lede">Your local videos, arranged like a streaming library. TMDB artwork and details appear automatically when available.</p></div>
+    <span class="library-count" th:text="${libraryCount} + ' videos'">0 videos</span></div>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Title updated.</p>
+  <p class="notice" th:if="${libraryWarning}" th:text="${libraryWarning}">TMDB reference unavailable.</p>
+  <div class="library-summary">
+    <span th:text="${movieCount} + ' movies'">0 movies</span><span th:text="${seriesCount} + ' series'">0 series</span>
+    <span th:text="${episodeCount} + ' episodes'">0 episodes</span><span>Local playback works independently of TMDB</span>
+  </div>
+  <nav class="library-tabs" aria-label="Browse your local library">
+    <a th:classappend="${kind == 'ALL'} ? ' is-active' : ''" th:href="@{/library}">Everything</a>
+    <a th:classappend="${kind == 'MOVIE'} ? ' is-active' : ''" th:href="@{/library(kind='MOVIE',q=${query})}">Movies</a>
+    <a th:classappend="${kind == 'SERIES'} ? ' is-active' : ''" th:href="@{/library(kind='SERIES',q=${query})}">Series</a>
+  </nav>
+  <form class="search-bar library-search" th:action="@{/library}" method="get" role="search">
+    <label class="sr-only" for="library-search">Search your movies and series</label><span class="search-symbol" aria-hidden="true">⌕</span>
+    <input id="library-search" type="search" name="q" th:value="${query}" placeholder="Search your movies or series…" autocomplete="off">
+    <input type="hidden" name="kind" th:value="${kind}"><button class="button button-small" type="submit">Search</button>
+  </form>
+
+  <section class="library-shelf" th:if="${kind == 'ALL' or kind == 'MOVIE'}">
+    <div class="library-shelf-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Movies</h2></div><span th:text="${#lists.size(movies)} + ' titles'">0 titles</span></div>
+    <div class="media-poster-grid" th:if="${!#lists.isEmpty(movies)}">
+      <article class="media-poster-card" th:each="movie : ${movies}">
+        <a class="media-card-poster-link" th:href="@{/library/{id}/play(id=${movie.id})}" th:aria-label="|Play ${movie.displayTitle}|">
+          <img class="media-card-poster" th:if="${movie.tmdbPosterPath != null and !#strings.isEmpty(movie.tmdbPosterPath)}"
+               th:src="@{/library/posters/media/{id}(id=${movie.id},v=${movie.tmdbId})}" th:alt="|${movie.tmdbTitle} poster|" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="media-card-placeholder image-fallback" th:style="${movie.tmdbPosterPath != null and !#strings.isEmpty(movie.tmdbPosterPath)} ? 'display:none' : 'display:flex'"><span>▶</span><small>LOCAL MOVIE</small></div>
+          <span class="poster-play">▶</span>
+        </a>
+        <div class="media-card-info"><h3 th:text="${movie.tmdbTitle != null ? movie.tmdbTitle : movie.displayTitle}">Movie title</h3>
+          <p th:text="${movie.tmdbReleaseDate != null and !#strings.isEmpty(movie.tmdbReleaseDate) ? #strings.substring(movie.tmdbReleaseDate,0,4) : movie.fileName}">Year or filename</p>
+          <p class="show-overview" th:if="${movie.tmdbOverview != null and !#strings.isEmpty(movie.tmdbOverview)}" th:text="${movie.tmdbOverview}">Movie overview</p>
+          <div class="media-card-actions"><a class="button button-small" th:href="@{/library/{id}/play(id=${movie.id})}">Play</a>
+            <span class="media-subtitle-badge" th:if="${movie.subtitlePath != null}">CC</span>
+            <form th:if="${movie.tmdbId == null}" th:action="@{/library/{id}/tmdb-match(id=${movie.id})}" method="post" class="tmdb-match-form"><button class="text-button" type="submit">Find poster</button></form>
+            <details class="media-rename"><summary aria-label="Correct movie title">✎</summary><form th:action="@{/library/{id}/rename(id=${movie.id})}" method="post">
+              <label th:for="|title-${movie.id}|">Correct display title</label><input type="text" name="title" th:id="|title-${movie.id}|" th:value="${movie.displayTitle}" maxlength="400" required><button class="button button-small" type="submit">Save title</button>
+            </form></details>
+          </div>
+        </div>
+      </article>
+    </div>
+    <div class="library-empty-inline" th:if="${#lists.isEmpty(movies)}"><span>▣</span><p>No movies match this search.</p></div>
+  </section>
+
+  <section class="library-shelf" th:if="${kind == 'ALL' or kind == 'SERIES'}">
+    <div class="library-shelf-heading"><div><p class="eyebrow">EPISODE COLLECTIONS</p><h2>Series</h2></div><span th:text="${#lists.size(series)} + ' shows'">0 shows</span></div>
+    <div class="media-poster-grid" th:if="${!#lists.isEmpty(series)}">
+      <article class="media-poster-card" th:each="show : ${series}">
+        <a class="media-card-poster-link" th:href="@{/library/series(title=${show.key})}" th:aria-label="|Open ${show.title}|">
+          <img class="media-card-poster" th:if="${show.posterPath != null and !#strings.isEmpty(show.posterPath)}"
+               th:src="@{/library/posters/media/{id}(id=${show.posterMediaId},v=${show.tmdbId})}" th:alt="|${show.title} poster|" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="media-card-placeholder series-placeholder image-fallback" th:style="${show.posterPath != null and !#strings.isEmpty(show.posterPath)} ? 'display:none' : 'display:flex'"><span>▤</span><small>LOCAL SERIES</small></div>
+          <span class="show-episode-count" th:text="${show.episodeCount} + ' eps'">0 eps</span>
+        </a>
+        <div class="media-card-info"><h3><a th:href="@{/library/series(title=${show.key})}" th:text="${show.catalogTitle != null and !#strings.isEmpty(show.catalogTitle) ? show.catalogTitle : show.title}">Series title</a></h3>
+          <p th:text="${(show.seasonCount == 1 ? '1 season' : show.seasonCount + ' seasons') + ' · ' + (show.episodeCount == 1 ? '1 episode' : show.episodeCount + ' episodes')}">0 seasons · 0 episodes</p>
+          <p class="show-overview" th:if="${show.overview != null and !#strings.isEmpty(show.overview)}" th:text="${show.overview}">Series overview</p>
+          <div class="media-card-actions"><a class="button button-small" th:href="@{/library/series(title=${show.key})}">Browse episodes</a>
+            <form th:if="${show.tmdbId == null}" th:action="@{/library/series/tmdb-match}" method="post" class="tmdb-match-form">
+              <input type="hidden" name="title" th:value="${show.key}"><button class="text-button" type="submit">Find poster</button>
+            </form>
+          </div>
+        </div>
+      </article>
+    </div>
+    <div class="library-empty-inline" th:if="${#lists.isEmpty(series)}"><span>▤</span><p>No series match this search.</p></div>
+  </section>
+  <p class="library-note">The app checks your video drive every minute and refreshes optional TMDB references in the background. Poster images are kept in your local database for offline browsing. When the last video for a title is removed, its local entry and cached poster are cleaned up.</p>
+</main>
+</body></html>

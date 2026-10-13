@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#100d11">
+  <title th:text="|${showTitle} · My media library|">Series · My media library</title><link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script></head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content series-library-page">
+  <a class="text-link" th:href="@{/library(kind='SERIES')}">← Back to series</a>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Series reference linked.</p>
+  <p class="notice" th:if="${libraryWarning}" th:text="${libraryWarning}">TMDB reference unavailable.</p>
+  <section class="series-library-hero">
+    <img th:if="${show.tmdbPosterPath != null and !#strings.isEmpty(show.tmdbPosterPath)}" th:src="@{/library/posters/media/{id}(id=${show.id},v=${show.tmdbId})}" th:alt="|${showTitle} poster|" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+    <div class="series-hero-placeholder image-fallback" th:style="${show.tmdbPosterPath != null and !#strings.isEmpty(show.tmdbPosterPath)} ? 'display:none' : 'display:grid'">▤</div>
+    <div class="series-hero-copy"><p class="eyebrow">YOUR LOCAL SERIES</p><h1 class="page-title" th:text="${showTitle}">Series title</h1>
+      <div class="series-hero-meta"><span th:text="${seasonLabel}">0 seasons</span><span th:text="${episodeCount == 1 ? '1 episode' : episodeCount + ' episodes'}">0 episodes</span>
+        <span th:if="${show.tmdbReleaseDate != null and !#strings.isEmpty(show.tmdbReleaseDate)}" th:text="${#strings.substring(show.tmdbReleaseDate,0,4)}">Year</span></div>
+      <p class="series-hero-overview" th:if="${show.tmdbOverview != null and !#strings.isEmpty(show.tmdbOverview)}" th:text="${show.tmdbOverview}">Optional catalogue description.</p>
+      <form th:if="${show.tmdbId == null}" th:action="@{/library/series/tmdb-match}" method="post" class="tmdb-match-form">
+        <input type="hidden" name="title" th:value="${show.seriesTitle}"><button class="button button-quiet" type="submit">Find poster and details</button>
+      </form>
+    </div>
+  </section>
+  <section class="season-list"><div class="library-shelf-heading"><div><p class="eyebrow">WATCH FROM YOUR DRIVE</p><h2>Seasons &amp; episodes</h2><p class="section-hint">Episodes are ordered by season and episode number.</p></div></div>
+    <details class="season-folder" th:each="season, seasonStat : ${seasons}" th:open="${seasonStat.first}">
+      <summary><span class="season-folder-icon">▱</span><span th:text="${season.seasonNumber == 0 ? 'Specials' : 'Season ' + season.seasonNumber}">Season 1</span><small th:text="${#lists.size(season.episodes)} + ' episodes'">0 episodes</small></summary>
+      <ol class="episode-list">
+        <li class="episode-row" th:each="episode : ${season.episodes}">
+          <span class="episode-number" th:text="${episode.episodeNumber == null ? '—' : 'E' + #numbers.formatInteger(episode.episodeNumber,2)}">E01</span>
+          <div class="episode-copy"><h3 th:text="${episode.episodeTitle != null and !#strings.isEmpty(episode.episodeTitle) ? episode.episodeTitle : episode.displayTitle}">Episode title</h3>
+            <p th:text="${episode.fileName}">Episode filename</p></div>
+          <span class="media-subtitle-badge" th:if="${episode.subtitlePath != null}" title="Subtitle available">CC</span>
+          <a class="button button-small" th:href="@{/library/{id}/play(id=${episode.id})}">Play</a>
+        </li>
+      </ol>
+    </details>
+  </section>
+  <p class="library-note">Episodes are read directly from your local video files. TMDB is only used for optional artwork and series information.</p>
+</main></body></html>

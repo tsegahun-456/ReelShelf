@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11">
+  <link rel="manifest" th:href="@{/manifest.webmanifest}">
+  <title>Discover films · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="page-shell">
+  <section class="hero-panel" th:with="hero=${#lists.isEmpty(trending) ? null : trending[0]}">
+    <img class="hero-image" th:if="${hero != null and !#strings.isEmpty(hero.backdropPath)}"
+         th:src="|https://image.tmdb.org/t/p/w1280${hero.backdropPath}|" alt="" fetchpriority="high">
+    <div class="hero-shade"></div>
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="live-dot"></span> YOUR NEXT MOVIE NIGHT</p>
+      <h1>Find a story<br><span>worth staying in for.</span></h1>
+        <p class="hero-description">Discover movies and series, save the ones you love, and keep every watch in one place.</p>
+      <div class="hero-actions">
+        <a class="button" th:href="@{/search}"><span aria-hidden="true">⌕</span> Explore movies</a>
+        <a class="button button-quiet" th:if="${signedIn}" th:href="@{/watchlist}">Open my list <span aria-hidden="true">↗</span></a>
+        <a class="button button-quiet" th:unless="${signedIn}" th:href="@{/signup}">Create your list <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+    <div class="hero-side-note"><span class="hero-line"></span><span>Curated for your next watch</span></div>
+  </section>
+
+  <div class="content-wrap">
+    <section class="section-block">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">START EXPLORING</p>
+          <h2>Find your next favorite</h2>
+        </div>
+        <a class="text-link" th:href="@{/search}">Search the catalog <span aria-hidden="true">→</span></a>
+      </div>
+      <form class="search-bar" th:action="@{/search}" method="get" role="search">
+        <label class="sr-only" for="home-search">Search titles</label>
+        <span class="search-symbol" aria-hidden="true">⌕</span>
+        <input id="home-search" type="search" name="q" placeholder="Search movies and series by title…" autocomplete="off">
+        <button class="button button-small" type="submit">Search</button>
+      </form>
+    </section>
+
+    <section class="section-block" aria-labelledby="trending-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">RIGHT NOW</p>
+          <h2 id="trending-heading">Trending movies</h2>
+        </div>
+        <span class="section-meta" th:text="${#lists.size(trending)} + ' titles'">0 titles</span>
+      </div>
+      <p class="notice" th:if="${catalogMessage}" th:text="${catalogMessage}">Catalog message</p>
+      <div class="movie-rail" th:if="${!#lists.isEmpty(trending)}">
+        <th:block th:each="movie : ${trending}">
+          <div th:replace="~{fragments/movie-card :: card(${movie})}"></div>
+        </th:block>
+      </div>
+      <div class="empty-panel" th:if="${#lists.isEmpty(trending)}">
+        <div class="empty-icon" aria-hidden="true">✦</div>
+        <h3>The big screen is getting ready</h3>
+        <p th:if="${catalogMessage}" th:text="${catalogMessage}">Add a TMDB key to load the live catalog.</p>
+        <p th:unless="${catalogMessage}">Trending films will appear here once the catalog responds.</p>
+        <a class="button button-small" th:href="@{/search}">Browse search</a>
+      </div>
+    </section>
+
+    <section class="section-block" th:each="rail : ${rails}">
+      <div class="section-heading"><div><p class="eyebrow">MORE TO WATCH</p><h2 th:text="${rail.title}">Popular movies</h2></div>
+        <a class="text-link" th:href="${rail.items[0].mediaType == 'TV'} ? @{/search(type='TV')} : @{/search}">Explore all <span aria-hidden="true">→</span></a></div>
+      <div class="movie-rail">
+        <th:block th:each="movie : ${rail.items}">
+          <div th:replace="~{fragments/movie-card :: card(${movie})}"></div>
+        </th:block>
+      </div>
+    </section>
+
+    <section class="feature-strip">
+      <div class="feature-mark" aria-hidden="true">✦</div>
+      <div><p class="eyebrow">A LITTLE MORE CINEMA</p><h2>Your taste, in one place.</h2>
+        <p>Build a watchlist, keep track of what you have seen, and give every great film a rating.</p></div>
+      <a class="button button-quiet" th:href="${signedIn} ? @{/watchlist} : @{/signup}">Get started <span aria-hidden="true">→</span></a>
+    </section>
+  </div>
+</main>
+<footer class="site-footer"><span>Movie Watchlist</span><span>Made for the love of a good story.</span></footer>
+</body>
+</html>

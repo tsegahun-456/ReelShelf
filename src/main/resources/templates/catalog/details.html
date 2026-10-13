@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Movie details · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${mediaType == 'TV' ? 'series' : 'search'}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content detail-page">
+  <a class="back-link" th:href="${mediaType == 'TV'} ? @{/search(type='TV')} : @{/search}">← Back to search</a>
+  <p class="notice" th:if="${pageMessage}" th:text="${pageMessage}">Title message</p>
+  <section class="detail-hero" th:if="${details}" th:with="movie=${details.movie}">
+    <img class="detail-backdrop" th:if="${!#strings.isEmpty(movie.backdropPath)}" th:src="|https://image.tmdb.org/t/p/w1280${movie.backdropPath}|" alt="">
+    <div class="detail-shade"></div>
+    <div class="detail-copy">
+      <p class="eyebrow" th:text="${mediaType == 'TV' ? 'SERIES DETAILS' : 'MOVIE DETAILS'}">MOVIE DETAILS</p>
+      <h1 th:text="${movie.title}">Movie title</h1>
+      <div class="detail-meta">
+        <span th:if="${!#strings.isEmpty(movie.releaseDate)}" th:text="${#strings.substring(movie.releaseDate, 0, 4)}">2026</span>
+        <span th:if="${details.runtime > 0}" th:text="${mediaType == 'TV' ? details.runtime + ' min / episode' : details.runtime + ' min'}">120 min</span>
+        <span th:if="${details.numberOfSeasons > 0}" th:text="${details.numberOfSeasons} + ' seasons'">3 seasons</span>
+        <span class="rating"><span aria-hidden="true">★</span><span th:text="${#numbers.formatDecimal(movie.rating, 1, 1)}">8.0</span></span>
+      </div>
+      <p class="detail-overview" th:text="${movie.overview}">Overview</p>
+      <div class="genre-list" th:if="${!#lists.isEmpty(details.genres)}"><span class="genre-chip" th:each="genre : ${details.genres}" th:text="${genre}">Drama</span></div>
+      <div class="hero-actions">
+        <form th:if="${signedIn}" th:action="@{/watchlist/add}" method="post"><input type="hidden" name="movieId" th:value="${movie.id}"><input type="hidden" name="mediaType" th:value="${movie.mediaType}"><button class="button" type="submit">＋ Add to my list</button></form>
+        <a class="button" th:unless="${signedIn}" th:href="@{/login}">Sign in to add to your list</a>
+        <form th:if="${signedIn}" th:action="@{/watched/add}" method="post"><input type="hidden" name="movieId" th:value="${movie.id}"><input type="hidden" name="mediaType" th:value="${movie.mediaType}"><button class="button button-quiet" type="submit">✓ Mark watched</button></form>
+        <a class="button button-quiet" th:unless="${signedIn}" th:href="@{/login}">Sign in to mark watched</a>
+        <a class="button button-quiet" th:if="${details.trailerKey}" th:href="|https://www.youtube.com/watch?v=${details.trailerKey}|" target="_blank" rel="noopener noreferrer">▶ Watch trailer</a>
+      </div>
+    </div>
+  </section>
+  <section class="section-block season-section" th:if="${mediaType == 'TV' and details != null and !#lists.isEmpty(details.seasons)}">
+    <div class="section-heading"><div><p class="eyebrow">THE STORY CONTINUES</p><h2>Seasons</h2></div></div>
+    <div class="season-grid"><article class="season-card" th:each="season : ${details.seasons}">
+      <img th:if="${!#strings.isEmpty(season.posterPath)}" th:src="|https://image.tmdb.org/t/p/w300${season.posterPath}|" th:alt="|${season.name} poster|" loading="lazy">
+      <div class="season-placeholder" th:unless="${!#strings.isEmpty(season.posterPath)}" aria-hidden="true">✦</div>
+      <div><strong th:text="${season.name}">Season 1</strong><span th:text="${season.episodeCount} + ' episodes'">8 episodes</span></div>
+    </article></div>
+  </section>
+  <section class="section-block cast-section" th:if="${details != null and !#lists.isEmpty(details.cast)}">
+    <div class="section-heading"><div><p class="eyebrow">THE PEOPLE</p><h2>Featured cast</h2></div></div>
+    <div class="cast-grid"><article class="cast-card" th:each="person : ${details.cast}">
+      <img th:if="${!#strings.isEmpty(person.profilePath)}" th:src="|https://image.tmdb.org/t/p/w185${person.profilePath}|" th:alt="${person.name}" loading="lazy">
+      <div class="cast-placeholder" th:unless="${!#strings.isEmpty(person.profilePath)}" aria-hidden="true">✦</div>
+      <strong th:text="${person.name}">Actor name</strong><span th:text="${person.character}">Character</span>
+    </article></div>
+  </section>
+  <div class="empty-panel" th:if="${details == null and !pageMessage}"><h3>Movie not found</h3><p>Return to search and choose another title.</p><a class="button" th:href="@{/search}">Search movies</a></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="header(activePage, signedIn, currentEmail)">
+<header class="site-header">
+  <a class="brand" th:href="@{/}" aria-label="Movie Watchlist home">
+    <span class="brand-mark" aria-hidden="true">M</span>
+    <span>movie<span class="brand-accent">watchlist</span></span>
+  </a>
+  <nav class="primary-nav" aria-label="Main navigation">
+    <a th:classappend="${activePage == 'home'} ? ' is-active' : ''" th:href="@{/}">Discover</a>
+    <a th:classappend="${activePage == 'search'} ? ' is-active' : ''" th:href="@{/search}">Movies</a>
+    <a th:classappend="${activePage == 'series'} ? ' is-active' : ''" th:href="@{/search(type='TV')}">Series</a>
+    <a th:classappend="${activePage == 'library'} ? ' is-active' : ''" th:href="@{/library}">My media</a>
+    <a th:classappend="${activePage == 'watchlist'} ? ' is-active' : ''" th:href="@{/watchlist}">My list</a>
+    <a th:classappend="${activePage == 'watched'} ? ' is-active' : ''" th:href="@{/watched}">Watched</a>
+    <a th:classappend="${activePage == 'profile'} ? ' is-active' : ''" th:href="@{/profile}">Profile</a>
+  </nav>
+  <div class="header-actions">
+    <a class="icon-link" th:href="@{/search}" aria-label="Search movies"><span aria-hidden="true">⌕</span></a>
+    <span class="header-user" th:if="${signedIn}" th:text="${currentEmail}"></span>
+    <form th:if="${signedIn}" th:action="@{/logout}" method="post">
+      <button class="button button-quiet button-small" type="submit">Sign out</button>
+    </form>
+    <a class="button button-small" th:unless="${signedIn}" th:href="@{/login}">Sign in</a>
+  </div>
+</header>
+<nav class="mobile-nav" aria-label="Mobile navigation">
+  <a th:classappend="${activePage == 'home'} ? ' is-active' : ''" th:href="@{/}"><span aria-hidden="true">⌂</span><small>Home</small></a>
+  <a th:classappend="${activePage == 'search' or activePage == 'series'} ? ' is-active' : ''" th:href="@{/search}"><span aria-hidden="true">⌕</span><small>Search</small></a>
+  <a th:classappend="${activePage == 'library'} ? ' is-active' : ''" th:href="@{/library}"><span aria-hidden="true">▤</span><small>Library</small></a>
+  <a th:classappend="${activePage == 'watchlist'} ? ' is-active' : ''" th:href="@{/watchlist}"><span aria-hidden="true">♡</span><small>My list</small></a>
+  <a th:classappend="${activePage == 'watched'} ? ' is-active' : ''" th:href="@{/watched}"><span aria-hidden="true">✓</span><small>Watched</small></a>
+  <a th:classappend="${activePage == 'profile'} ? ' is-active' : ''" th:href="@{/profile}"><span aria-hidden="true">♙</span><small>Profile</small></a>
+</nav>
+</div>
+</body>
+</html>

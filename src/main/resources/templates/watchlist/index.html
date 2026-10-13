@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>My watchlist · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content">
+  <p class="eyebrow">YOUR COLLECTION</p>
+  <div class="section-heading list-heading"><div><h1 class="page-title">My <span>watchlist.</span></h1>
+    <p class="page-lede">All the movies and series you’re looking forward to.</p></div>
+    <a class="button button-quiet" th:href="@{/search}">Find another title <span aria-hidden="true">→</span></a>
+  </div>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Watchlist update</p>
+  <section class="watchlist-grid" th:if="${!#lists.isEmpty(entries)}">
+    <article class="watchlist-card" th:each="entry : ${entries}">
+      <a class="watchlist-poster" th:href="${entry.detailsPath}">
+        <img th:if="${!#strings.isEmpty(entry.posterPath)}" th:src="|https://image.tmdb.org/t/p/w500${entry.posterPath}|" th:alt="|${entry.title} poster|" loading="lazy">
+        <span th:unless="${!#strings.isEmpty(entry.posterPath)}" class="poster-placeholder">MW</span>
+      </a>
+      <div class="watchlist-card-copy"><p class="eyebrow" th:text="${entry.mediaType == 'TV' ? 'SERIES · SAVED FOR LATER' : 'MOVIE · SAVED FOR LATER'}">SAVED FOR LATER</p>
+        <h2><a th:href="${entry.detailsPath}" th:text="${entry.title}">Movie title</a></h2>
+        <div class="detail-meta"><span th:if="${!#strings.isEmpty(entry.releaseDate)}" th:text="${#strings.length(entry.releaseDate) >= 4 ? #strings.substring(entry.releaseDate, 0, 4) : entry.releaseDate}">2026</span>
+          <span class="rating" th:if="${entry.voteAverage != null}"><span aria-hidden="true">★</span><span th:text="${#numbers.formatDecimal(entry.voteAverage, 1, 1)}">8.0</span></span></div>
+        <form th:action="@{/watchlist/{id}/remove(id=${entry.id})}" method="post">
+          <button class="button button-quiet button-small" type="submit">Remove from list</button>
+        </form>
+      </div>
+    </article>
+  </section>
+  <div class="empty-panel" th:if="${#lists.isEmpty(entries)}">
+    <div class="empty-icon" aria-hidden="true">♡</div><h2>Your watchlist is ready</h2>
+    <p>When you find something you want to see, save it here and it will be waiting for you.</p>
+    <a class="button" th:href="@{/search}">Explore titles</a>
+  </div>
+</main>
+</body>
+</html>

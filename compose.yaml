@@ -1,0 +1,38 @@
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: movie_watchlist
+      POSTGRES_USER: moviewatchlist
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - movie_watchlist_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moviewatchlist -d movie_watchlist"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: jdbc:postgresql://database:5432/movie_watchlist
+      DATABASE_USERNAME: moviewatchlist
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      MEDIA_ROOTS: /media/library
+      PORT: 8080
+    volumes:
+      - "${MEDIA_HOST_ROOT:-/media/tsega/New Volume}:/media/library:ro"
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  movie_watchlist_data:

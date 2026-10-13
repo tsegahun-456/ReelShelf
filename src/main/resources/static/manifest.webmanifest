@@ -1,0 +1,18 @@
+{
+  "name": "Movie Watchlist",
+  "short_name": "Watchlist",
+  "description": "Discover movies and keep your personal watchlist close.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#100d11",
+  "theme_color": "#100d11",
+  "icons": [
+    {
+      "src": "/images/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

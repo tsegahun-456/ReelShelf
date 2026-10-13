@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Your profile · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content">
+  <p class="eyebrow">YOUR MOVIE SPACE</p>
+  <h1 class="page-title">Hello, <span th:text="${account.displayName}">movie fan</span>.</h1>
+  <p class="page-lede">Your account and everything you’re collecting.</p>
+  <p class="notice" th:if="${notice}" th:text="${notice}">Cloud sync status</p>
+  <section class="profile-overview">
+    <article class="profile-card profile-identity"><div class="profile-avatar" aria-hidden="true" th:text="${#strings.substring(account.displayName, 0, 1).toUpperCase()}">M</div>
+      <div><p class="eyebrow">SIGNED IN AS</p><h2 th:text="${account.displayName}">Name</h2><p th:text="${account.email}">email@example.com</p></div></article>
+    <a class="profile-card profile-stat" th:href="@{/watchlist}"><span class="stat-icon" aria-hidden="true">＋</span><div><p class="eyebrow">SAVED FOR LATER</p><strong th:text="${watchlistCount}">0</strong><span>movies in my list</span></div><span class="stat-arrow" aria-hidden="true">↗</span></a>
+    <a class="profile-card profile-stat" th:href="@{/watched}"><span class="stat-icon" aria-hidden="true">✓</span><div><p class="eyebrow">ALREADY SEEN</p><strong th:text="${watchedCount}">0</strong><span>movies watched</span></div><span class="stat-arrow" aria-hidden="true">↗</span></a>
+  </section>
+  <section class="feature-strip profile-prompt"><div class="feature-mark" aria-hidden="true">✦</div><div><p class="eyebrow">KEEP DISCOVERING</p><h2>There’s always another story.</h2><p>Find a film, save it for a quiet night, or rate it when the credits roll.</p></div><a class="button button-quiet" th:href="@{/search}">Explore movies <span aria-hidden="true">→</span></a></section>
+</main>
+</body>
+</html>
