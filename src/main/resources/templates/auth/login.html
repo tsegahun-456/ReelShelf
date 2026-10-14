@@ -20,6 +20,11 @@
       <input id="username" name="username" type="email" autocomplete="email" required autofocus>
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div class="remember-me">
+        <input id="remember-me" name="remember-me" type="checkbox" value="true">
+        <label for="remember-me">Keep me signed in on this computer</label>
+      </div>
+      <p class="auth-note">Only tick this on a computer you trust. Signing out removes it.</p>
       <button class="button button-wide" type="submit">Sign in <span aria-hidden="true">→</span></button>
     </form>
     <p class="auth-switch">New to Movie Watchlist? <a th:href="@{/signup}">Create an account</a></p>

@@ -15,6 +15,7 @@
     <a th:classappend="${activePage == 'watchlist'} ? ' is-active' : ''" th:href="@{/watchlist}">My list</a>
     <a th:classappend="${activePage == 'watched'} ? ' is-active' : ''" th:href="@{/watched}">Watched</a>
     <a th:classappend="${activePage == 'profile'} ? ' is-active' : ''" th:href="@{/profile}">Profile</a>
+    <a th:classappend="${activePage == 'settings'} ? ' is-active' : ''" th:href="@{/settings}">Settings</a>
   </nav>
   <div class="header-actions">
     <a class="icon-link" th:href="@{/search}" aria-label="Search movies"><span aria-hidden="true">⌕</span></a>
@@ -32,6 +33,7 @@
   <a th:classappend="${activePage == 'watchlist'} ? ' is-active' : ''" th:href="@{/watchlist}"><span aria-hidden="true">♡</span><small>My list</small></a>
   <a th:classappend="${activePage == 'watched'} ? ' is-active' : ''" th:href="@{/watched}"><span aria-hidden="true">✓</span><small>Watched</small></a>
   <a th:classappend="${activePage == 'profile'} ? ' is-active' : ''" th:href="@{/profile}"><span aria-hidden="true">♙</span><small>Profile</small></a>
+  <a th:classappend="${activePage == 'settings'} ? ' is-active' : ''" th:href="@{/settings}"><span aria-hidden="true">⚙</span><small>Settings</small></a>
 </nav>
 </div>
 </body>

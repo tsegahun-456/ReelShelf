@@ -9,4 +9,5 @@ public interface LocalMediaRepository extends JpaRepository<LocalMedia, Long> {
     List<LocalMedia> findByMediaKindOrderByDisplayTitleAsc(String mediaKind);
     List<LocalMedia> findByMediaKindOrderBySeriesTitleAscSeasonNumberAscEpisodeNumberAsc(String mediaKind);
     Optional<LocalMedia> findByFilePath(String filePath);
+    long countByFilePathStartingWith(String filePathPrefix);
 }

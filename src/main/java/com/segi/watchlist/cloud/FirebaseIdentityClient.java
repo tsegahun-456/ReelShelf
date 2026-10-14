@@ -41,10 +41,17 @@ public class FirebaseIdentityClient {
 
     public String freshIdToken(FirebaseSessionPrincipal principal) {
         if (!principal.tokenNeedsRefresh()) return principal.idToken();
+        FirebaseTokens tokens = refreshTokens(principal.refreshToken(), principal.displayName());
+        principal.replaceTokens(tokens);
+        return tokens.idToken();
+    }
+
+    /** Exchanges a Firebase refresh token for a fresh token set (used for in-session refresh and sign-in restore). */
+    public FirebaseTokens refreshTokens(String refreshToken, String displayName) {
         try {
             MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
             form.add("grant_type", "refresh_token");
-            form.add("refresh_token", principal.refreshToken());
+            form.add("refresh_token", refreshToken);
             Map<?, ?> response = client.post()
                     .uri(uri -> uri.scheme("https").host("securetoken.googleapis.com")
                             .path("/v1/token").queryParam("key", properties.webApiKey()).build())
@@ -52,13 +59,11 @@ public class FirebaseIdentityClient {
                     .body(form)
                     .retrieve().body(Map.class);
             if (response == null) throw new FirebaseIdentityException("TOKEN_REFRESH_FAILED");
-            FirebaseTokens tokens = new FirebaseTokens(
+            return new FirebaseTokens(
                     string(response.get("user_id")),
-                    string(response.get("email")), principal.displayName(),
+                    string(response.get("email")), displayName == null ? "" : displayName,
                     string(response.get("id_token")), string(response.get("refresh_token")),
                     parseLong(response.get("expires_in"), 3600));
-            principal.replaceTokens(tokens);
-            return tokens.idToken();
         } catch (RestClientResponseException exception) {
             throw toIdentityException(exception);
         }

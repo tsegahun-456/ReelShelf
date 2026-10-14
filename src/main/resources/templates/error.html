@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><title>Something went wrong · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-body">
+<main class="auth-layout">
+  <a class="brand auth-brand" th:href="@{/}"><span class="brand-mark" aria-hidden="true">M</span><span>movie<span class="brand-accent">watchlist</span></span></a>
+  <section class="auth-card">
+    <p class="eyebrow" th:text="${status != null ? 'ERROR ' + status : 'OOPS'}">OOPS</p>
+    <h1>Something got in<br><span>the way.</span></h1>
+    <p class="auth-lede" th:if="${status == 403}">That request was refused — this usually means the page you were using went out of date (for example after the app restarted). Load the page again and retry.</p>
+    <p class="auth-lede" th:if="${status == 404}">That page does not exist. Head back home and try from there.</p>
+    <p class="auth-lede" th:if="${status != 403 and status != 404}">That page ran into a problem. Going back home and trying again usually works.</p>
+    <div class="settings-wide">
+      <a class="button" th:href="@{/}">Back to home</a>
+      <a class="button button-quiet" th:href="@{/login}">Sign in</a>
+      <a class="button button-quiet" th:href="@{/settings}">Settings</a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

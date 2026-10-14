@@ -19,7 +19,9 @@ The script writes a ready-to-extract folder and `.tar.gz` archive under `target/
 3. Search for **Movie Watchlist** in the desktop app menu. The first launch opens the app at `http://127.0.0.1:8080`.
 4. To stop it, run `./scripts/stop-movie-watchlist-portable.sh` from the extracted folder.
 
-On first launch the app creates `~/.config/movie-watchlist/movie-watchlist.env`. Edit `MEDIA_ROOTS` there to list the folders or mounted partitions that contain videos. Separate multiple folder paths with commas. The database and logs stay under `~/.local/share/movie-watchlist/` and `~/.local/state/movie-watchlist/`, so removing/replacing the app bundle does not remove that data.
+On first launch the app creates `~/.config/movie-watchlist/movie-watchlist.env`. The `MEDIA_ROOTS` value there seeds the scan list the very first time the app starts. After that, use the in-app **Settings** page to add or remove folders: it can auto-detect `Videos`, `Downloads`, and mounted drives, offers *Scan everything on this PC*, and has a *Scan now* button — no restart or config edit needed. The database and logs stay under `~/.local/share/movie-watchlist/` and `~/.local/state/movie-watchlist/`, so removing/replacing the app bundle does not remove that data.
+
+Tick **Keep me signed in** on the sign-in page to remain signed in across restarts (the sign-in key is stored encrypted on that PC only); **Sign out** removes it.
 
 Set `TMDB_API_KEY`, `FIREBASE_WEB_API_KEY`, and `FIREBASE_PROJECT_ID` in that config file if the friend needs online catalog lookup and Firebase sign-in/sync. These settings are optional for launching and using the local library. A restart applies config changes.
 

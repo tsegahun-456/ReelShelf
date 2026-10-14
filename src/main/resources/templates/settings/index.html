@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Settings · Movie Watchlist</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content">
+  <p class="eyebrow">SETTINGS</p>
+  <div class="section-heading list-heading"><div><h1 class="page-title">Where to <span>look.</span></h1>
+    <p class="page-lede">Movie Watchlist only searches the folders you choose. Add the drives and folders that hold your movies and series.</p></div>
+    <form th:action="@{/settings/scan}" method="post">
+      <button class="button" type="submit">Scan now</button>
+    </form>
+  </div>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Folder updated</p>
+  <p class="error-message" th:if="${error}" th:text="${error}">Folder error</p>
+
+  <section class="settings-panel" th:unless="${#lists.isEmpty(folders)}">
+    <h2>Scanned folders</h2>
+    <div class="settings-row" th:each="folder : ${folders}">
+      <div class="settings-row-copy">
+        <code th:text="${folder.path}">/media/drive/Movies</code>
+        <span class="settings-status ok" th:if="${folder.exists}" th:text="|✓ ${folder.mediaCount} videos found|">✓ 0 videos found</span>
+        <span class="settings-status warn" th:unless="${folder.exists}">⚠ Not found right now — is the drive plugged in?</span>
+      </div>
+      <form th:action="@{/settings/roots/delete}" method="post">
+        <input type="hidden" name="path" th:value="${folder.path}">
+        <button class="button button-quiet button-small" type="submit">Remove</button>
+      </form>
+    </div>
+  </section>
+  <div class="empty-panel" th:if="${#lists.isEmpty(folders)}">
+    <div class="empty-icon" aria-hidden="true">▤</div><h2>No folders yet</h2>
+    <p>Add a folder below and your movies and episodes will show up in My media.</p>
+  </div>
+
+  <section class="settings-panel">
+    <h2>Add a folder</h2>
+    <form class="settings-add" th:action="@{/settings/roots}" method="post">
+      <input name="path" type="text" required placeholder="/media/drive/Movies  ·  C:\Users\you\Videos" aria-label="Folder path">
+      <button class="button" type="submit">Add folder</button>
+    </form>
+    <p class="settings-hint">Type any folder on this PC, or a whole drive. Windows-style paths like C:\Users\you\Videos work too. System folders (such as /proc) are refused.</p>
+  </section>
+
+  <section class="settings-panel" th:unless="${#lists.isEmpty(suggestions)}">
+    <h2>Found on this PC</h2>
+    <div class="settings-chips">
+      <form class="settings-chip" th:each="s : ${suggestions}" th:action="@{/settings/roots}" method="post">
+        <input type="hidden" name="path" th:value="${s.path}">
+        <button type="submit"><span th:text="${s.path}">/home/you/Videos</span><small aria-hidden="true">＋ add</small></button>
+      </form>
+    </div>
+  </section>
+
+  <section class="settings-panel">
+    <h2>Scan more of this PC</h2>
+    <div class="settings-wide">
+      <form th:if="${homeFolder != null}" th:action="@{/settings/roots}" method="post">
+        <input type="hidden" name="path" th:value="${homeFolder.path}">
+        <button class="button button-quiet" type="submit">Add your whole home folder</button>
+      </form>
+      <form th:if="${everythingFolder != null}" th:action="@{/settings/roots}" method="post">
+        <input type="hidden" name="path" th:value="${everythingFolder.path}">
+        <button class="button button-quiet" type="submit">Add everything on this PC (/)</button>
+      </form>
+    </div>
+    <p class="settings-hint">A whole-PC scan takes much longer and keeps re-checking every minute. System folders are skipped, but only the folders you add are watched.</p>
+  </section>
+</main>
+</body>
+</html>

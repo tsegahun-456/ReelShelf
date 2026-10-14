@@ -1,12 +1,15 @@
 package com.segi.watchlist.cloud;
 
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -15,11 +18,14 @@ import org.springframework.web.client.RestClientResponseException;
 
 @Component
 public class FirestoreRestClient {
+    private static final Logger log = LoggerFactory.getLogger(FirestoreRestClient.class);
     private final FirebaseProperties properties;
+    private final ObjectMapper objectMapper;
     private final RestClient client = FirebaseRestClientFactory.create();
 
-    public FirestoreRestClient(FirebaseProperties properties) {
+    public FirestoreRestClient(FirebaseProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     public List<CloudTitle> list(String uid, String collection, String idToken) {
@@ -27,16 +33,22 @@ public class FirestoreRestClient {
         String pageToken = null;
         do {
             String currentPage = pageToken;
-            JsonNode response = client.get()
-                    .uri(uri -> {
-                        var builder = uri.scheme("https").host("firestore.googleapis.com")
-                                .path(collectionPath())
-                                .queryParam("pageSize", 1000);
-                        if (currentPage != null && !currentPage.isBlank()) builder.queryParam("pageToken", currentPage);
-                        return builder.build(properties.projectId(), uid, collection);
-                    })
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + idToken)
-                    .retrieve().body(JsonNode.class);
+            JsonNode response;
+            try {
+                response = client.get()
+                        .uri(uri -> {
+                            var builder = uri.scheme("https").host("firestore.googleapis.com")
+                                    .path(collectionPath())
+                                    .queryParam("pageSize", 1000);
+                            if (currentPage != null && !currentPage.isBlank()) builder.queryParam("pageToken", currentPage);
+                            return builder.build(properties.projectId(), uid, collection);
+                        })
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + idToken)
+                        .retrieve().body(JsonNode.class);
+            } catch (RestClientResponseException exception) {
+                logRestFailure("list", collection, exception);
+                throw exception;
+            }
             if (response == null) return results;
             for (JsonNode document : response.path("documents")) {
                 CloudTitle title = readTitle(document.path("fields"));
@@ -54,8 +66,8 @@ public class FirestoreRestClient {
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + idToken).retrieve().toBodilessEntity();
             return true;
         } catch (RestClientResponseException exception) {
-            if (exception.getStatusCode().value() == 404) return false;
-            throw wrapCloudError(exception);
+            if (exception.getStatusCode().value() == 404) return false; // First sync: marker document not written yet.
+            throw wrapCloudError("get-meta", "meta", exception);
         }
     }
 
@@ -77,7 +89,8 @@ public class FirestoreRestClient {
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + idToken)
                     .retrieve().toBodilessEntity();
         } catch (RestClientResponseException exception) {
-            if (exception.getStatusCode().value() != 404) throw wrapCloudError(exception);
+            if (exception.getStatusCode().value() == 404) return; // Already gone: treat as success.
+            throw wrapCloudError("delete", collection, exception);
         }
     }
 
@@ -90,7 +103,7 @@ public class FirestoreRestClient {
                     .contentType(MediaType.APPLICATION_JSON).body(payload)
                     .retrieve().toBodilessEntity();
         } catch (RestClientResponseException exception) {
-            throw wrapCloudError(exception);
+            throw wrapCloudError("write", collection, exception);
         }
     }
 
@@ -160,11 +173,36 @@ public class FirestoreRestClient {
         return "/v1/projects/{projectId}/databases/(default)/documents/users/{uid}/{collection}/{documentId}";
     }
 
-    private FirebaseCloudException wrapCloudError(RestClientResponseException exception) {
+    private FirebaseCloudException wrapCloudError(String operation, String collection,
+                                                  RestClientResponseException exception) {
+        logRestFailure(operation, collection, exception);
         int status = exception.getStatusCode().value();
         String message = status == 401 || status == 403
                 ? "Firebase rejected this request. Check the Firestore rules and sign in again."
                 : "Cloud sync is unavailable right now. Your local copy is still saved.";
         return new FirebaseCloudException(message);
+    }
+
+    private void logRestFailure(String operation, String collection, RestClientResponseException exception) {
+        log.warn("Firestore {} failed: collection={} projectId={} status={} error=\"{}\"",
+                operation, collection, properties.projectId(), exception.getStatusCode().value(),
+                safeErrorMessage(exception));
+    }
+
+    /**
+     * Extracts only the {@code error.message} field from a Firebase error body, whitespace-normalised and
+     * truncated. Raw bodies are never logged because identity-style responses can contain account details,
+     * and no credentials (ID tokens, refresh tokens, API keys) are ever written to the log.
+     */
+    private String safeErrorMessage(RestClientResponseException exception) {
+        try {
+            String message = objectMapper.readTree(exception.getResponseBodyAsString())
+                    .path("error").path("message").asText("");
+            if (message.isBlank()) return "no message in response body";
+            message = message.replaceAll("\\s+", " ").trim();
+            return message.length() > 200 ? message.substring(0, 200) + "..." : message;
+        } catch (Exception ignored) {
+            return "unparseable response body";
+        }
     }
 }

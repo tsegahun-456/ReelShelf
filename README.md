@@ -17,6 +17,19 @@ The Java web rebuild lives alongside the completed Flutter app. This first verti
 
 The Flutter app remains unchanged and is the behavior reference while features are ported.
 
+## Documentation
+
+Comprehensive engineering documentation is available in the [`docs/`](docs/) directory:
+
+- [**Microsoft Word Document (.docx)**](docs/Movie_Watchlist_Web_SRS_Comprehensive.docx): Complete 80+ page formatted Word document with all 18 embedded visual diagrams, formal tables, and IEEE specification.
+- [**Comprehensive Academic SRS & SDD Master Specification (Markdown)**](docs/SRS_COMPREHENSIVE.md): Complete 5-chapter institutional and enterprise specification adhering to the Dire Dawa University Department of Software Engineering standard (Chapters 1–5, Cost of Inaction, 9 Sequence Diagrams, 3 DFD Levels, Class Diagrams, Activity Diagrams, ERD, and RTM Matrix).
+- [**Software Requirements Specification (SRS)**](docs/SRS.md): IEEE 830 / ISO 29148 compliant requirements, functional breakdown, and acceptance criteria.
+- [**Architecture & Technical Design (SDD)**](docs/ARCHITECTURE.md): Subsystems, security boundary layers, and Mermaid sequence workflows (streaming, subtitle transcoding, cloud sync).
+- [**Database & Data Model Specification**](docs/DATABASE.md): Entity-Relationship Diagram (ERD), Flyway schema migration history (V1–V8), and Cloud Firestore data schema.
+- [**Deployment & Operations Guide**](docs/DEPLOYMENT_GUIDE.md): Docker Compose multi-container setup, environment variable matrix, and troubleshooting runbooks.
+- [**Firebase Setup Guide**](docs/FIREBASE_SETUP.md): Cloud authentication and Firestore rule configuration.
+- [**Portable Linux Guide**](docs/PORTABLE_LINUX.md): Running offline with embedded H2.
+
 ## Run with Docker Compose
 
 1. Copy `.env.example` to `.env`.

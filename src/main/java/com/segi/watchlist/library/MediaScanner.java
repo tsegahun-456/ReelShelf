@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +14,8 @@ import org.springframework.stereotype.Service;
 public class MediaScanner {
     private static final Set<String> VIDEO_EXT = Set.of("mkv", "mp4", "m4v", "webm", "avi", "mov", "mpg", "mpeg", "ts");
     private static final Set<String> SUB_EXT = Set.of("srt", "vtt");
-    private static final Set<String> SKIP_DIR = Set.of("music", "$recycle.bin", "system volume information", ".trash-1000");
+    private static final Set<String> SKIP_DIR = Set.of("music", "$recycle.bin", "system volume information", ".trash-1000",
+            "proc", "sys", "dev", "run");
     private static final Pattern EPISODE = Pattern.compile("(?i)^(.*?)\\bS(\\d{1,2})[ ._-]*E(\\d{1,3})(?:[ ._-]*E(\\d{1,3}))?(?:[ ._-]+(.*))?$");
     private static final Pattern NUMBERED_EPISODE = Pattern.compile("(?i)^(\\d{1,3})[ ._-]+(.+)$");
     private static final Pattern SEASON_FOLDER = Pattern.compile("(?i)^(?:s(?:eason)?[ ._-]*)?(\\d{1,2})$");
@@ -24,18 +24,18 @@ public class MediaScanner {
 
     private final LocalMediaRepository repository;
     private final LocalPosterCacheService posterCache;
-    private final List<Path> roots;
+    private final MediaRootService rootService;
     public MediaScanner(LocalMediaRepository repository, LocalPosterCacheService posterCache,
-                        @Value("${library.roots:/media/tsega/New Volume}") String rootsText) {
+                        MediaRootService rootService) {
         this.repository = repository;
         this.posterCache = posterCache;
-        this.roots = Arrays.stream(rootsText.split(",")).map(String::trim).filter(s -> !s.isBlank())
-                .map(Paths::get).map(Path::toAbsolutePath).map(Path::normalize).toList();
+        this.rootService = rootService;
     }
 
     @Scheduled(fixedDelayString = "${library.scan-interval-ms:60000}", initialDelayString = "${library.scan-initial-delay-ms:3000}")
     public synchronized void scan() {
-        for (Path root : roots) {
+        // Folders come from the database (Settings page) so they can change without a restart.
+        for (Path root : rootService.currentRoots()) {
             if (!Files.isDirectory(root) || !Files.isReadable(root)) continue;
             Set<String> seenPaths = new HashSet<>();
             boolean[] complete = {true};
@@ -88,7 +88,7 @@ public class MediaScanner {
     public LocalMedia require(long id) { return repository.findById(id).orElseThrow(() -> new NoSuchElementException("Media not found")); }
     public boolean isAllowed(Path path) {
         Path resolved = path.toAbsolutePath().normalize();
-        return roots.stream().anyMatch(resolved::startsWith);
+        return rootService.currentRoots().stream().anyMatch(resolved::startsWith);
     }
     public static String extension(Path p) { String name = p.getFileName().toString(); int i = name.lastIndexOf('.'); return i < 0 ? "" : name.substring(i + 1).toLowerCase(Locale.ROOT); }
 
