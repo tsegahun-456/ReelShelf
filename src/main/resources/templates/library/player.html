@@ -2,13 +2,13 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#100d11">
-  <title th:text="|${item.displayTitle} · Movie Watchlist|">Play video</title>
+  <title th:text="|${item.displayTitle} · ReelShelf|">Play video</title><link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="apple-touch-icon" th:href="@{/images/app-icon.svg}">
   <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
   <script defer th:src="@{/js/media-player.js}"></script>
 </head>
 <body class="player-body">
 <div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
-<main id="cinemaPlayer" class="content-wrap page-content cinema-player" th:attr="data-media-id=${item.id},data-tracks-url=@{/library/{id}/subtitle/tracks(id=${item.id})},data-next-url=${nextPlayUrl}">
+<main id="cinemaPlayer" class="content-wrap page-content cinema-player" th:attr="data-media-id=${item.id},data-tracks-url=@{/library/{id}/subtitle/tracks(id=${item.id})},data-next-url=${nextPlayUrl},data-prev-url=${previousPlayUrl}">
   <div class="player-heading">
     <a class="player-back" th:href="${backUrl}" aria-label="Back to library">‹ <span>Library</span></a>
     <div class="player-heading-copy">
@@ -16,6 +16,7 @@
       <h1 th:text="${item.displayTitle}">Title</h1>
       <p class="player-episode-meta" th:if="${item.mediaKind == 'EPISODE'}" th:text="|Season ${item.seasonNumber}, Episode ${item.episodeNumber}${item.episodeTitle != null ? ' · ' + item.episodeTitle : ''}|">Season 1, Episode 1</p>
     </div>
+    <a class="player-prev-link" th:if="${previousItem != null}" th:href="${previousPlayUrl}" th:text="|← Previous · ${previousItem.displayTitle}|">Previous</a>
     <a class="player-next-link" th:if="${nextItem != null}" th:href="${nextPlayUrl}" th:text="|Next · ${nextItem.displayTitle} →|">Next episode</a>
   </div>
 
@@ -43,6 +44,8 @@
             <button class="control-button main-toggle" id="playToggle" type="button" aria-label="Play"><span id="playIcon" aria-hidden="true">▶</span></button>
             <button class="control-button skip-button" id="backTen" type="button" aria-label="Back 10 seconds"><span aria-hidden="true">↶</span><small>10</small></button>
             <button class="control-button skip-button" id="forwardTen" type="button" aria-label="Forward 10 seconds"><span aria-hidden="true">↷</span><small>10</small></button>
+            <button class="control-button shelf-nav-button" id="previousItem" type="button" aria-label="Previous item" th:if="${previousItem != null}" th:title="|Previous · ${previousItem.displayTitle} (Shift+P)|"><span aria-hidden="true">⏮</span></button>
+            <button class="control-button shelf-nav-button" id="nextItem" type="button" aria-label="Next item" th:if="${nextItem != null}" th:title="|Next · ${nextItem.displayTitle} (Shift+N)|"><span aria-hidden="true">⏭</span></button>
             <button class="control-button speed-boost-button" id="speedBoost" type="button" aria-label="Enable 2× playback (X)" aria-pressed="false" title="Toggle 2× playback (X)">2×</button>
             <button class="control-button volume-icon" id="muteToggle" type="button" aria-label="Mute">◖))</button>
             <input id="volumeBar" class="volume-bar" type="range" min="0" max="1" value="1" step="0.01" aria-label="Volume">
@@ -73,7 +76,7 @@
   <div class="player-below">
     <div class="player-caption-status" id="subtitleStatus" role="status">Checking for subtitle tracks…</div>
     <div class="player-utility-row">
-      <span class="keyboard-hint"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> skip 10s · <kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> skip 5s · <kbd>X</kbd> toggle 2× · <kbd>C</kbd> captions · <kbd>F</kbd> fullscreen</span>
+      <span class="keyboard-hint"><kbd>Space</kbd> play <kbd>←</kbd><kbd>→</kbd> skip 10s · <kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> skip 5s · <kbd>Shift</kbd>+<kbd>P</kbd><kbd>N</kbd> prev/next · <kbd>X</kbd> toggle 2× · <kbd>C</kbd> captions · <kbd>F</kbd> fullscreen</span>
       <label class="compact-control subtitle-size-control" title="Subtitle text size">
         <span aria-hidden="true">Aa</span>
         <select id="subtitleSizeSelect" aria-label="Subtitle text size">

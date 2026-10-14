@@ -1,6 +1,6 @@
-# Movie Watchlist Web
+# ReelShelf
 
-The Java web rebuild lives alongside the completed Flutter app. This first vertical slice contains:
+A Spring Boot movie and TV discovery, watchlist, and local media library.
 
 - Responsive dark and red discovery pages with trending, popular, new release, top rated, upcoming movie, and TV series shelves.
 - Movie and TV search/discovery with genre, year, and minimum-rating filters.

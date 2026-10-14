@@ -2,12 +2,12 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Sign in · Movie Watchlist</title>
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Sign in · ReelShelf</title><link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="apple-touch-icon" th:href="@{/images/app-icon.svg}">
   <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
 </head>
 <body class="auth-body">
 <main class="auth-layout">
-  <a class="brand auth-brand" th:href="@{/}"><span class="brand-mark" aria-hidden="true">M</span><span>movie<span class="brand-accent">watchlist</span></span></a>
+  <a class="brand auth-brand" th:href="@{/}"><span class="brand-mark" aria-hidden="true">R</span><span>reel<span class="brand-accent">shelf</span></span></a>
   <section class="auth-card">
     <p class="eyebrow">WELCOME BACK</p>
     <h1>Pick up where<br><span>the story left off.</span></h1>
@@ -27,7 +27,7 @@
       <p class="auth-note">Only tick this on a computer you trust. Signing out removes it.</p>
       <button class="button button-wide" type="submit">Sign in <span aria-hidden="true">→</span></button>
     </form>
-    <p class="auth-switch">New to Movie Watchlist? <a th:href="@{/signup}">Create an account</a></p>
+    <p class="auth-switch">New to ReelShelf? <a th:href="@{/signup}">Create an account</a></p>
     <p class="field-error" th:unless="${cloudSignInEnabled}">Cloud sync is not configured yet. Local sign-in still works.</p>
     <a class="auth-back" th:href="@{/}">← Back to discover</a>
   </section>

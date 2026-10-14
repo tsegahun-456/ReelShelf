@@ -1,4 +1,4 @@
-const CACHE_NAME = 'movie-watchlist-shell-v3';
+const CACHE_NAME = 'reelshelf-shell-v4';
 const SHELL_FILES = [
   '/offline.html',
   '/css/app.css',

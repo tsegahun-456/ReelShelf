@@ -2,12 +2,12 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#100d11"><title>Something went wrong · Movie Watchlist</title>
+  <meta name="theme-color" content="#100d11"><title>Something went wrong · ReelShelf</title><link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="apple-touch-icon" th:href="@{/images/app-icon.svg}">
   <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="auth-body">
 <main class="auth-layout">
-  <a class="brand auth-brand" th:href="@{/}"><span class="brand-mark" aria-hidden="true">M</span><span>movie<span class="brand-accent">watchlist</span></span></a>
+  <a class="brand auth-brand" th:href="@{/}"><span class="brand-mark" aria-hidden="true">R</span><span>reel<span class="brand-accent">shelf</span></span></a>
   <section class="auth-card">
     <p class="eyebrow" th:text="${status != null ? 'ERROR ' + status : 'OOPS'}">OOPS</p>
     <h1>Something got in<br><span>the way.</span></h1>

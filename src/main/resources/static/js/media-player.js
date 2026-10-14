@@ -319,6 +319,9 @@
   video.addEventListener('click', togglePlayback);
   document.getElementById('backTen').addEventListener('click', () => seekBy(-10));
   document.getElementById('forwardTen').addEventListener('click', () => seekBy(10));
+  const shelfGoTo = (url) => { if (url) window.location.assign(url); };
+  document.getElementById('previousItem')?.addEventListener('click', () => shelfGoTo(shell.dataset.prevUrl));
+  document.getElementById('nextItem')?.addEventListener('click', () => shelfGoTo(shell.dataset.nextUrl));
   speedBoost.addEventListener('click', toggleSpeedBoost);
   seek.addEventListener('input', () => {
     if (Number.isFinite(video.duration)) video.currentTime = Number(seek.value) / 1000 * video.duration;
@@ -452,6 +455,8 @@
     else if (event.code === 'KeyF') { toggleFullscreen(); }
     else if (event.code === 'KeyC') { toggleCaptions(); }
     else if (event.code === 'KeyX') { event.preventDefault(); toggleSpeedBoost(); }
+    else if (event.code === 'KeyN' && event.shiftKey) { event.preventDefault(); shelfGoTo(shell.dataset.nextUrl); }
+    else if (event.code === 'KeyP' && event.shiftKey) { event.preventDefault(); shelfGoTo(shell.dataset.prevUrl); }
     revealControls();
   });
   window.addEventListener('pagehide', () => saveProgress(true));

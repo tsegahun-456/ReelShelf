@@ -3,9 +3,9 @@
 <body>
 <div th:fragment="header(activePage, signedIn, currentEmail)">
 <header class="site-header">
-  <a class="brand" th:href="@{/}" aria-label="Movie Watchlist home">
-    <span class="brand-mark" aria-hidden="true">M</span>
-    <span>movie<span class="brand-accent">watchlist</span></span>
+  <a class="brand" th:href="@{/}" aria-label="ReelShelf home">
+    <span class="brand-mark" aria-hidden="true">R</span>
+    <span>reel<span class="brand-accent">shelf</span></span>
   </a>
   <nav class="primary-nav" aria-label="Main navigation">
     <a th:classappend="${activePage == 'home'} ? ' is-active' : ''" th:href="@{/}">Discover</a>

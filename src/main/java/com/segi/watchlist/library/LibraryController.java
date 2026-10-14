@@ -103,24 +103,32 @@ public class LibraryController {
         model.addAttribute("signedIn", authentication != null);
         model.addAttribute("currentEmail", authentication == null ? "" : authentication.getName());
         model.addAttribute("item", item);
-        String backUrl = "EPISODE".equals(item.getMediaKind()) && item.getSeriesTitle() != null
+        boolean episode = "EPISODE".equals(item.getMediaKind()) && item.getSeriesTitle() != null;
+        String backUrl = episode
                 ? "/library/series?title=" + org.springframework.web.util.UriUtils.encode(item.getSeriesTitle(), StandardCharsets.UTF_8)
                 : "/library?kind=MOVIE";
         model.addAttribute("backUrl", backUrl);
-        if ("EPISODE".equals(item.getMediaKind()) && item.getSeriesTitle() != null) {
-            List<LocalMedia> episodes = scanner.list("", "EPISODE").stream()
-                    .filter(candidate -> seriesKey(candidate.getSeriesTitle()).equals(seriesKey(item.getSeriesTitle())))
-                    .sorted(Comparator.comparing(LocalMedia::getSeasonNumber, Comparator.nullsLast(Integer::compareTo))
-                            .thenComparing(LocalMedia::getEpisodeNumber, Comparator.nullsLast(Integer::compareTo)))
-                    .toList();
-            for (int index = 0; index + 1 < episodes.size(); index++) {
-                if (episodes.get(index).getId().equals(item.getId())) {
-                    LocalMedia next = episodes.get(index + 1);
-                    model.addAttribute("nextItem", next);
-                    model.addAttribute("nextPlayUrl", "/library/" + next.getId() + "/play");
-                    break;
-                }
+        List<LocalMedia> shelf = episode
+                ? scanner.list("", "EPISODE").stream()
+                        .filter(candidate -> seriesKey(candidate.getSeriesTitle()).equals(seriesKey(item.getSeriesTitle())))
+                        .sorted(Comparator.comparing(LocalMedia::getSeasonNumber, Comparator.nullsLast(Integer::compareTo))
+                                .thenComparing(LocalMedia::getEpisodeNumber, Comparator.nullsLast(Integer::compareTo)))
+                        .toList()
+                : scanner.list("", "MOVIE").stream()
+                        .sorted(Comparator.comparing(LocalMedia::getDisplayTitle, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                        .toList();
+        model.addAttribute("shelfKind", episode ? "episode" : "movie");
+        for (int index = 0; index < shelf.size(); index++) {
+            if (!shelf.get(index).getId().equals(item.getId())) continue;
+            if (index > 0) {
+                model.addAttribute("previousItem", shelf.get(index - 1));
+                model.addAttribute("previousPlayUrl", "/library/" + shelf.get(index - 1).getId() + "/play");
             }
+            if (index + 1 < shelf.size()) {
+                model.addAttribute("nextItem", shelf.get(index + 1));
+                model.addAttribute("nextPlayUrl", "/library/" + shelf.get(index + 1).getId() + "/play");
+            }
+            break;
         }
         return "library/player";
     }
