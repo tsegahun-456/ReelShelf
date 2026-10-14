@@ -70,6 +70,29 @@
     </div>
     <p class="settings-hint">A whole-PC scan takes much longer and keeps re-checking every minute. System folders are skipped, but only the folders you add are watched.</p>
   </section>
+
+  <section class="settings-panel" id="updatePanel">
+    <h2>Updates</h2>
+    <p class="settings-hint" id="updateStatus">Checking the installed version…</p>
+    <div class="settings-wide">
+      <button class="button button-quiet" type="button" id="checkUpdates">Check for updates</button>
+    </div>
+    <script>
+      (() => {
+        const status = document.getElementById('updateStatus');
+        const button = document.getElementById('checkUpdates');
+        const runCheck = () => {
+          status.textContent = 'Checking GitHub for a newer build…';
+          fetch('/api/settings/update/check', { headers: { Accept: 'application/json' } })
+            .then(response => response.json())
+            .then(info => { status.textContent = `Installed ${info.currentVersion}. ${info.message}`; })
+            .catch(() => { status.textContent = 'Update information is unavailable right now.'; });
+        };
+        button.addEventListener('click', runCheck);
+        runCheck();
+      })();
+    </script>
+  </section>
 </main>
 </body>
 </html>
