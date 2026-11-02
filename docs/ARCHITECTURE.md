@@ -53,7 +53,8 @@ flowchart TD
         subgraph ServiceLayer ["Domain & Processing Services"]
             CatSvc["MovieCatalogService"]
             Scanner["MediaScanner & Matcher"]
-            SubSvc["EmbeddedSubtitleService"]
+            SubSvc["EmbeddedSubtitleService & EmbeddedAudioService"]
+            ReviewSvc["MediaScanReviewService & LibraryReviewController"]
             PosterSvc["LocalPosterCacheService"]
             SyncSvc["FirebaseMediaSyncService"]
         end
@@ -70,7 +71,7 @@ flowchart TD
     end
 
     subgraph StorageLayer ["Local Storage & Persistence"]
-        Postgres[("PostgreSQL 16 (Flyway V1-V8) / H2")]
+        Postgres[("PostgreSQL 16 (Flyway V1-V11) / H2")]
         MediaDisk[("Host Media Volumes (/media/library)")]
     end
 
@@ -94,6 +95,7 @@ flowchart TD
     SyncSvc <-->|HTTPS REST| Firestore
 
     Scanner -->|Filesystem Walk| MediaDisk
+    ReviewSvc -->|Progress and explicit review actions| RepositoryLayer
     LibCtrl -->|Byte-Range Stream| MediaDisk
     SubSvc <-->|ProcessBuilder IO| FFmpegBin
 ```
@@ -118,15 +120,18 @@ flowchart TD
   - Handles parameter validation and graceful error fallback (`TmdbNotConfiguredException`).
 
 ### 3.3 Local Media & Cinema Player Subsystem (`com.segi.watchlist.library`)
-- **`MediaScanner`**: Performs recursive directory traversal across all roots declared in `media_scan_root`.
+- **`MediaScanner`**: Performs recursive directory traversal across all roots declared in `media_scan_root`. A parser-version migration re-reads existing file metadata safely, while incomplete folder walks preserve previously saved entries.
   - Filters video formats: `.mp4`, `.mkv`, `.avi`, `.webm`, `.mov`, `.m4v`.
   - Parses episode identifiers using regex patterns (e.g., `S01E04`, `1x04`, `Season 1 Episode 4`).
   - Detects deletions and prunes stale records.
-- **`LocalMediaTmdbMatcher`**: Computes normalized Levenshtein edit distance between sanitized local video filenames and TMDB catalog searches. Automatically attaches TMDB IDs and overview descriptions when confidence $\ge 0.55$.
+- **`LocalMediaTmdbMatcher`**: Automatically attaches only high-confidence title/year matches; substring matches and ambiguous remakes remain for manual review.
 - **`LocalPosterCacheService`**: Downloads posters from TMDB for matched local items, storing the binary data in PostgreSQL (`local_media_poster_cache`). Serves them locally with HTTP 304 caching support.
 - **`EmbeddedSubtitleService`**: Manages external FFmpeg/ffprobe processes:
   - Spawns `ffprobe` to inspect media containers for text subtitle streams (SubRip, ASS, Mov_Text).
   - Spawns `ffmpeg` on demand to convert selected subtitle streams directly to WebVTT (`text/vtt`).
+- **`EmbeddedAudioService`**: Enumerates embedded audio tracks and creates a cached playback copy with the selected audio when browser-native switching is unavailable. It never writes to the source media file.
+- **`LibraryReviewController` / `MediaScanReviewService`**: Presents scan progress/errors, possible duplicate-file groups, similar series names, and poster candidates. Series merges and TMDB links require an explicit user choice.
+- Timestamped study notes attach to local media; named TMDB collections are stored locally and remain separate from Firebase-synced **My list**.
 - **`LibraryController`**: Serves UI views, poster images, range-based video streams, and subtitle streams.
 
 ### 3.4 Watchlist & Watched Subsystem (`com.segi.watchlist.watchlist`, `com.segi.watchlist.watched`)
@@ -198,12 +203,14 @@ sequenceDiagram
         Scanner->>Matcher: match(item)
         Matcher->>TMDB: GET /3/search/{type}?query={sanitizedTitle}
         TMDB-->>Matcher: List of candidate MovieCard objects
-        Matcher->>Matcher: Calculate Levenshtein Match Score
-        alt Match Score >= 0.55
+        Matcher->>Matcher: Check exact/high-confidence title and year
+        alt Unique confident match
             Matcher->>DB: Attach tmdb_id, poster_path, overview
             Matcher->>Cache: queuePosterDownload(posterPath)
             Cache->>TMDB: Download poster image bytes
             Cache->>DB: INSERT INTO local_media_poster_cache
+        else Ambiguous or weak match
+            Matcher->>Matcher: Leave unlinked for Scan Review
         end
     end
 ```

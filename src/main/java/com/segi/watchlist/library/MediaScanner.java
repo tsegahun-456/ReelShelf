@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class MediaScanner {
+    static final int PARSER_VERSION = 2;
     private static final Set<String> VIDEO_EXT = Set.of("mkv", "mp4", "m4v", "webm", "avi", "mov", "mpg", "mpeg", "ts");
     private static final Set<String> SUB_EXT = Set.of("srt", "vtt");
     /** How many visited files/directories between "is this folder still configured?" checks. */
@@ -28,21 +29,30 @@ public class MediaScanner {
     private final LocalMediaRepository repository;
     private final LocalPosterCacheService posterCache;
     private final MediaRootService rootService;
+    private final MediaScanReviewService scanReview;
     public MediaScanner(LocalMediaRepository repository, LocalPosterCacheService posterCache,
-                        MediaRootService rootService) {
+                        MediaRootService rootService, MediaScanReviewService scanReview) {
         this.repository = repository;
         this.posterCache = posterCache;
         this.rootService = rootService;
+        this.scanReview = scanReview;
     }
 
     @Scheduled(fixedDelayString = "${library.scan-interval-ms:300000}", initialDelayString = "${library.scan-initial-delay-ms:3000}")
     public synchronized void scan() {
         // Folders come from the database (Settings page) so they can change without a restart.
+        List<Path> roots = rootService.currentRoots();
+        scanReview.begin(roots.stream().map(Path::toString).toList());
+        try {
         Map<String, LocalMedia> knownByPath = new HashMap<>();
         repository.findAllByOrderByDisplayTitleAsc()
                 .forEach(item -> knownByPath.put(item.getFilePath(), item));
-        for (Path root : rootService.currentRoots()) {
-            if (!Files.isDirectory(root) || !Files.isReadable(root)) continue;
+        for (Path root : roots) {
+            if (!Files.isDirectory(root) || !Files.isReadable(root)) {
+                scanReview.issue("Folder unavailable", root.toString(), "Folder is missing or cannot be read; its saved videos were left untouched.");
+                scanReview.finishRoot();
+                continue;
+            }
             Path walkRoot = realRoot(root);
             Set<String> seenPaths = new HashSet<>();
             Map<Path, DirectorySnapshot> directorySnapshots = new HashMap<>();
@@ -52,6 +62,7 @@ public class MediaScanner {
             try {
                 Files.walkFileTree(walkRoot, new SimpleFileVisitor<>() {
                     @Override public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                        scanReview.visitPath();
                         if (!dir.equals(walkRoot) && SKIP_DIR.contains(dir.getFileName().toString().toLowerCase(Locale.ROOT)))
                             return FileVisitResult.SKIP_SUBTREE;
                         if (++visited[0] % CHECK_EVERY == 0 && !rootService.isConfigured(root)) {
@@ -61,13 +72,19 @@ public class MediaScanner {
                         return FileVisitResult.CONTINUE;
                     }
                     @Override public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        scanReview.visitPath();
                         String ext = extension(file);
                         if (!VIDEO_EXT.contains(ext) || !attrs.isRegularFile()) return FileVisitResult.CONTINUE;
+                        scanReview.foundVideo();
                         if (++visited[0] % CHECK_EVERY == 0 && !rootService.isConfigured(root)) {
                             removed[0] = true;
                             return FileVisitResult.TERMINATE;
                         }
-                        if (!Files.isReadable(file)) { complete[0] = false; return FileVisitResult.CONTINUE; }
+                        if (!Files.isReadable(file)) {
+                            complete[0] = false;
+                            scanReview.issue("Unreadable video", file.toString(), "File cannot be read; saved library data was left untouched.");
+                            return FileVisitResult.CONTINUE;
+                        }
                         try {
                             // walkRoot is canonical and directory symlinks are not followed, so
                             // normalized paths are stable without an extra filesystem lookup per video.
@@ -79,6 +96,7 @@ public class MediaScanner {
                             Instant modifiedAt = attrs.lastModifiedTime().toInstant().truncatedTo(ChronoUnit.MICROS);
                             if (row != null && row.getFileSize() == attrs.size()
                                     && Objects.equals(row.getModifiedAt(), modifiedAt)
+                                    && row.getParserVersion() == PARSER_VERSION
                                     && Objects.equals(row.getSubtitlePath(), subtitlePath)) {
                                 seenPaths.add(realFilePath);
                                 return FileVisitResult.CONTINUE;
@@ -90,34 +108,53 @@ public class MediaScanner {
                             if (changed) {
                                 if (row.getId() == null) {
                                     row = repository.save(row);
+                                    scanReview.addedVideo();
                                 } else {
                                     repository.updateScannedMetadata(media.filePath(), media.fileName(),
                                             media.displayTitle(), media.mediaKind(), media.seriesTitle(),
                                             media.seasonNumber(), media.episodeNumber(), media.episodeTitle(),
-                                            media.subtitlePath(), media.fileSize(), media.modifiedAt(), Instant.now());
+                                            media.subtitlePath(), media.fileSize(), media.modifiedAt(), Instant.now(), PARSER_VERSION);
+                                    scanReview.updatedVideo();
                                 }
                                 knownByPath.put(media.filePath(), row);
                             }
                             seenPaths.add(media.filePath());
-                        } catch (IOException | RuntimeException ignored) { complete[0] = false; }
+                        } catch (IOException | RuntimeException exception) {
+                            complete[0] = false;
+                            scanReview.issue("File scan failed", file.toString(), "File metadata could not be read; it will be retried.");
+                        }
                         return FileVisitResult.CONTINUE;
                     }
-                    @Override public FileVisitResult visitFileFailed(Path file, IOException exc) { complete[0] = false; return FileVisitResult.CONTINUE; }
+                    @Override public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                        complete[0] = false;
+                        scanReview.issue("Unreadable path", file.toString(), "The operating system refused access; it will be retried.");
+                        return FileVisitResult.CONTINUE;
+                    }
                     @Override public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
                         directorySnapshots.remove(dir);
-                        if (exc != null) complete[0] = false;
+                        if (exc != null) {
+                            complete[0] = false;
+                            scanReview.issue("Unreadable folder", dir.toString(), "Part of this folder could not be read; missing videos were not removed.");
+                        }
                         return FileVisitResult.CONTINUE;
                     }
                 });
                 // A folder removed mid-walk stops here; its rows were (or will be) cleaned by the prune below.
-                if (complete[0] && !removed[0]) removeMissingFiles(walkRoot, seenPaths, knownByPath);
-            } catch (IOException ignored) { /* A temporarily unreadable drive is retried by the next scan. */ }
+                if (complete[0] && !removed[0]) scanReview.removedVideos(removeMissingFiles(walkRoot, seenPaths, knownByPath));
+            } catch (IOException exception) {
+                scanReview.issue("Folder scan failed", root.toString(), "The folder scan stopped early; existing entries were preserved.");
+            } finally {
+                scanReview.finishRoot();
+            }
         }
         // Safety net: drop rows collected under folders that are no longer configured (covers removal races).
         rootService.pruneOrphanRows();
+        } finally {
+            scanReview.finish();
+        }
     }
 
-    private void removeMissingFiles(Path root, Set<String> seenPaths, Map<String, LocalMedia> knownByPath) {
+    private int removeMissingFiles(Path root, Set<String> seenPaths, Map<String, LocalMedia> knownByPath) {
         Path realRoot = realRoot(root);
         List<LocalMedia> stale = knownByPath.values().stream()
                 .filter(item -> Path.of(item.getFilePath()).startsWith(realRoot))
@@ -128,6 +165,7 @@ public class MediaScanner {
             stale.forEach(item -> knownByPath.remove(item.getFilePath()));
             posterCache.removeUnreferencedPosters();
         }
+        return stale.size();
     }
 
     /** Row paths are stored real-path'ed; resolve the root the same way before comparing prefixes. */
@@ -200,19 +238,21 @@ public class MediaScanner {
     }
 
     private String seriesFolderTitle(Path file, Path root) {
-        Path parent = file.getParent();
-        if (parent == null || parent.equals(root)) return null;
-        Matcher season = SEASON_FOLDER.matcher(parent.getFileName().toString());
-        if (!season.matches()) return null;
-        Path showFolder = parent.getParent();
-        return showFolder == null || showFolder.equals(root) ? null : showFolder.getFileName().toString();
+        for (Path folder = file.getParent(); folder != null && !folder.equals(root); folder = folder.getParent()) {
+            Matcher season = SEASON_FOLDER.matcher(folder.getFileName().toString());
+            if (!season.matches()) continue;
+            Path showFolder = folder.getParent();
+            return showFolder == null || showFolder.equals(root) ? null : showFolder.getFileName().toString();
+        }
+        return null;
     }
 
     private Optional<Integer> seasonFolderNumber(Path file, Path root) {
-        Path parent = file.getParent();
-        if (parent == null || parent.equals(root)) return Optional.empty();
-        Matcher season = SEASON_FOLDER.matcher(parent.getFileName().toString());
-        return season.matches() ? Optional.of(Integer.parseInt(season.group(1))) : Optional.empty();
+        for (Path folder = file.getParent(); folder != null && !folder.equals(root); folder = folder.getParent()) {
+            Matcher season = SEASON_FOLDER.matcher(folder.getFileName().toString());
+            if (season.matches()) return Optional.of(Integer.parseInt(season.group(1)));
+        }
+        return Optional.empty();
     }
 
     private boolean hasNumberedSiblings(String seriesTitle, DirectorySnapshot directory) {

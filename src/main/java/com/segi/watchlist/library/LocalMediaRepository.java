@@ -34,7 +34,8 @@ public interface LocalMediaRepository extends JpaRepository<LocalMedia, Long> {
                    media.subtitlePath = :subtitlePath,
                    media.fileSize = :fileSize,
                    media.modifiedAt = :modifiedAt,
-                   media.lastSeenAt = :lastSeenAt
+                   media.lastSeenAt = :lastSeenAt,
+                   media.parserVersion = :parserVersion
              where media.filePath = :filePath
             """)
     int updateScannedMetadata(@Param("filePath") String filePath,
@@ -48,7 +49,8 @@ public interface LocalMediaRepository extends JpaRepository<LocalMedia, Long> {
                               @Param("subtitlePath") String subtitlePath,
                               @Param("fileSize") long fileSize,
                               @Param("modifiedAt") java.time.Instant modifiedAt,
-                              @Param("lastSeenAt") java.time.Instant lastSeenAt);
+                              @Param("lastSeenAt") java.time.Instant lastSeenAt,
+                              @Param("parserVersion") int parserVersion);
 
     /** Applies an explicit user-selected match to every episode in a series. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -60,7 +62,8 @@ public interface LocalMediaRepository extends JpaRepository<LocalMedia, Long> {
                    media.tmdbTitle = :tmdbTitle,
                    media.tmdbOverview = :tmdbOverview,
                    media.tmdbPosterPath = :tmdbPosterPath,
-                   media.tmdbReleaseDate = :tmdbReleaseDate
+                   media.tmdbReleaseDate = :tmdbReleaseDate,
+                   media.tmdbMatchReviewed = true
              where media.id in :ids
             """)
     int updateTmdbMatchForIds(@Param("ids") Collection<Long> ids,

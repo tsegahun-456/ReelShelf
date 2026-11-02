@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#100d11"><title>Review poster · ReelShelf</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script></head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content poster-review-page">
+  <a class="back-link" th:href="@{/library/review}">← Scan review</a>
+  <p class="eyebrow">OPTIONAL CATALOG LINK</p><h1 class="page-title">Review <span th:text="${mediaType == 'TV' ? 'series' : 'movie'}">title</span>.</h1>
+  <p class="page-lede">Choose the matching title below. Nothing changes until you press “Use this match.” Your local video remains separate.</p>
+  <section class="poster-review-target"><div><span class="eyebrow" th:text="${mediaType == 'TV' ? 'LOCAL SERIES' : 'LOCAL MOVIE'}">LOCAL MOVIE</span><h2 th:text="${title}">Dark</h2><p th:text="|${relatedCount} local ${mediaType == 'TV' ? 'episode file(s)' : 'video file(s)'}|">1 local video</p></div><a class="text-link" th:href="@{/library/{id}/play(id=${media.id})}" th:if="${mediaType == 'MOVIE'}">Play local file</a></section>
+  <form class="poster-review-search" th:action="@{/library/review/posters}" method="get"><input type="hidden" name="mediaId" th:value="${media.id}"><label><span>Search TMDB titles</span><input type="search" name="q" th:value="${query}" placeholder="Enter the exact title" required></label><label><span>Release year (optional)</span><input type="number" name="year" min="1888" max="2100" th:value="${selectedYear}" placeholder="Year"></label><button class="button" type="submit">Search</button></form>
+  <p class="notice" th:if="${searchError}" th:text="${searchError}">TMDB search unavailable.</p>
+  <section class="poster-review-results" th:if="${!#lists.isEmpty(results)}"><div class="library-shelf-heading"><div><p class="eyebrow">SEARCH RESULTS</p><h2>Pick the right title</h2></div><span th:text="${#lists.size(results)} + ' results'">0 results</span></div>
+    <div class="movie-grid"><article class="movie-card poster-choice" th:each="candidate : ${results}"><div class="poster-link"><img class="poster" th:if="${candidate.posterPath != null and !#strings.isEmpty(candidate.posterPath)}" th:src="|https://image.tmdb.org/t/p/w500${candidate.posterPath}|" th:alt="|${candidate.title} poster|" loading="lazy"><span class="poster poster-placeholder" th:unless="${candidate.posterPath != null and !#strings.isEmpty(candidate.posterPath)}">RS</span></div>
+      <div class="movie-card-info"><h3 class="movie-title" th:text="${candidate.title}">Candidate title</h3><p class="movie-year" th:text="${candidate.releaseDate != null and candidate.releaseDate.length() >= 4 ? #strings.substring(candidate.releaseDate, 0, 4) : 'Year unknown'}">2024</p><p class="poster-choice-overview" th:text="${candidate.overview}">Description</p>
+        <form th:action="@{/library/review/posters/apply}" method="post"><input type="hidden" name="mediaId" th:value="${media.id}"><input type="hidden" name="tmdbId" th:value="${candidate.id}"><input type="hidden" name="mediaType" th:value="${candidate.mediaType}"><button class="button button-small" type="submit">Use this match</button></form>
+      </div></article></div>
+  </section>
+  <div class="empty-panel compact-empty" th:if="${#lists.isEmpty(results) and searchError == null}"><h2>No results yet</h2><p>Search by title. Add a year if there are remakes or several shows with the same name.</p></div>
+</main>
+</body></html>

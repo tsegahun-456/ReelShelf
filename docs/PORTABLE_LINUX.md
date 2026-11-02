@@ -26,7 +26,7 @@ Tick **Keep me signed in** on the sign-in page to remain signed in across restar
 
 Set `TMDB_API_KEY`, `FIREBASE_WEB_API_KEY`, and `FIREBASE_PROJECT_ID` in that config file if the friend needs online catalog lookup and Firebase sign-in/sync. These settings are optional for launching and using the local library. A restart applies config changes.
 
-Embedded subtitle tracks need `ffmpeg` and `ffprobe` available on the Linux computer. External `.srt` and `.vtt` sidecar subtitles continue to work without them. TMDB search and Firebase sync need internet; local video playback and the local database do not.
+Embedded subtitle discovery, embedded audio-track selection, and subtitle conversion need `ffmpeg` and `ffprobe` available on the Linux computer. If a browser cannot switch audio tracks natively, ReelShelf creates a cached, browser-compatible playback copy; it never alters the source video. Without FFmpeg, the app still launches and uses browser-default audio and external `.srt`/`.vtt` sidecar subtitles. TMDB search and Firebase sync need internet; local video playback and the local database do not.
 
 ## Important
 

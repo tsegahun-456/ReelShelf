@@ -11,7 +11,9 @@
   const volume = document.getElementById('volumeBar');
   const mute = document.getElementById('muteToggle');
   const captions = document.getElementById('subtitleSelect');
+  const audioSelect = document.getElementById('audioSelect');
   const subtitleSize = document.getElementById('subtitleSizeSelect');
+  const aspectRatioSelect = document.getElementById('aspectRatioSelect');
   const speed = document.getElementById('speedSelect');
   const speedBoost = document.getElementById('speedBoost');
   const status = document.getElementById('subtitleStatus');
@@ -19,7 +21,11 @@
   const resumePrompt = document.getElementById('resumePrompt');
   const progressKey = `movie-watchlist-playback-${shell.dataset.mediaId}`;
   const speedKey = 'movie-watchlist-playback-speed';
-  const subtitleSizeKey = 'movie-watchlist-subtitle-size';
+  const mediaId = shell.dataset.mediaId;
+  const subtitleSizeKey = `movie-watchlist-subtitle-size-${mediaId}`;
+  const aspectRatioKey = `movie-watchlist-aspect-ratio-${mediaId}`;
+  const audioTrackKey = `movie-watchlist-audio-track-${mediaId}`;
+  const originalSource = video.querySelector('source')?.getAttribute('src') || '';
   const nextKey = 'movie-watchlist-auto-next';
   let messageTimer;
   let hideControlsTimer;
@@ -31,16 +37,21 @@
   let subtitleTracks = [];
   let subtitleSelectionRevision = 0;
   let lastStageFit = '';
+  let audioTracks = [];
+  let audioSwitchState = null;
+  let selectedAudioStream = null;
 
   const fitStageToVideo = () => {
     if (!video.videoWidth || !video.videoHeight || document.fullscreenElement === stage) return;
-    const aspectRatio = video.videoWidth / video.videoHeight;
+    const aspectChoice = aspectRatioSelect?.value || 'auto';
+    const aspectRatio = aspectChoice === 'auto' ? video.videoWidth / video.videoHeight
+      : ({ '16:9': 16 / 9, '4:3': 4 / 3, '21:9': 21 / 9 }[aspectChoice] || video.videoWidth / video.videoHeight);
     const maxFrameWidth = Math.max(1, shell.clientWidth - 4);
     const compactViewport = window.matchMedia('(max-width: 720px)').matches;
     const maxVideoHeight = Math.max(120, Math.min(window.innerHeight * (compactViewport ? .65 : .76), 870));
     const videoWidth = Math.floor(Math.min(maxFrameWidth, maxVideoHeight * aspectRatio));
     const videoHeight = Math.round(videoWidth / aspectRatio);
-    const fitKey = `${maxFrameWidth}:${maxVideoHeight}:${video.videoWidth}:${video.videoHeight}`;
+    const fitKey = `${maxFrameWidth}:${maxVideoHeight}:${video.videoWidth}:${video.videoHeight}:${aspectChoice}`;
     if (fitKey === lastStageFit) return;
     lastStageFit = fitKey;
 
@@ -48,7 +59,7 @@
     frame.style.width = `${videoWidth + 4}px`;
     frame.style.maxWidth = '100%';
     stage.style.height = `${videoHeight}px`;
-    stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+    stage.style.aspectRatio = aspectChoice === 'auto' ? `${video.videoWidth} / ${video.videoHeight}` : String(aspectRatio);
     stage.classList.toggle('is-compact-controls', videoWidth < 700);
   };
 
@@ -159,6 +170,132 @@
     }
   };
 
+  const audioLabel = (track, index) => {
+    const parts = [track.title, track.language, track.codec, track.channels ? `${track.channels} ch` : ''].filter(Boolean);
+    return parts.length ? parts.join(' · ') : `Audio track ${index + 1}`;
+  };
+
+  const applyNativeAudioTrack = (streamIndex) => {
+    const native = video.audioTracks;
+    if (!native || native.length !== audioTracks.length) return false;
+    const selectedIndex = audioTracks.findIndex(track => track.streamIndex === streamIndex);
+    if (selectedIndex < 0) return false;
+    for (let index = 0; index < native.length; index++) native[index].enabled = index === selectedIndex;
+    selectedAudioStream = streamIndex;
+    return true;
+  };
+
+  const switchAudioTrack = async (streamIndex) => {
+    if (!Number.isInteger(streamIndex) || !audioTracks.some(track => track.streamIndex === streamIndex)) return;
+    if (applyNativeAudioTrack(streamIndex)) {
+      try { localStorage.setItem(audioTrackKey, String(streamIndex)); } catch { /* Keep the selection for this playback session. */ }
+      audioSelect.value = String(streamIndex);
+      const index = audioTracks.findIndex(track => track.streamIndex === streamIndex);
+      showMessage(`Audio · ${audioLabel(audioTracks[index], index)}`);
+      return;
+    }
+
+    const source = video.querySelector('source');
+    if (!source) return;
+    const targetUrl = `/library/${encodeURIComponent(mediaId)}/audio/${encodeURIComponent(streamIndex)}/video`;
+    if (source.getAttribute('src') === targetUrl) return;
+    const previousValue = selectedAudioStream === null ? audioSelect.value : String(selectedAudioStream);
+    const state = {
+      time: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+      wasPlaying: !video.paused,
+      captions: captions.value
+    };
+    audioSelect.disabled = true;
+    showMessage('Preparing the selected audio track. The original video file stays unchanged.');
+    try {
+      // Prepare a browser-compatible copy before changing the current video source.
+      const response = await fetch(targetUrl, { method: 'HEAD', headers: { Accept: 'video/mp4' }, cache: 'no-store' });
+      if (!response.ok) throw new Error((await response.text()).trim() || `Audio track unavailable (${response.status}).`);
+      audioSwitchState = state;
+      source.setAttribute('src', targetUrl);
+      selectedAudioStream = streamIndex;
+      try { localStorage.setItem(audioTrackKey, String(streamIndex)); } catch { /* Selection stays active for this session. */ }
+      video.load();
+    } catch (error) {
+      audioSwitchState = null;
+      audioSelect.value = previousValue;
+      showMessage(error.message || 'Could not switch to that audio track.');
+      audioSelect.disabled = audioTracks.length < 2;
+    }
+  };
+
+  const switchToOriginalAudio = () => {
+    const source = video.querySelector('source');
+    if (!source || !originalSource || source.getAttribute('src') === originalSource) return;
+    audioSwitchState = {
+      time: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+      wasPlaying: !video.paused,
+      captions: captions.value
+    };
+    source.setAttribute('src', originalSource);
+    selectedAudioStream = null;
+    try { localStorage.setItem(audioTrackKey, 'original'); } catch { /* Selection stays active for this session. */ }
+    audioSelect.value = 'original';
+    video.load();
+  };
+
+  const loadAudioTracks = async () => {
+    if (!audioSelect) return;
+    audioSelect.replaceChildren();
+    try {
+      const response = await fetch(shell.dataset.audioTracksUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      if (!response.ok) throw new Error('Audio track information is unavailable.');
+      const result = await response.json();
+      audioTracks = result.tracks || [];
+      if (!result.toolsAvailable || !audioTracks.length) {
+        audioSelect.add(new Option('Audio · browser default', 'default'));
+        audioSelect.disabled = true;
+        audioSelect.title = result.message || (result.toolsAvailable ? 'No embedded audio tracks were found.' : 'Audio track inspection needs FFmpeg in the app runtime.');
+        return;
+      }
+      audioSelect.add(new Option('Original file audio', 'original'));
+      audioTracks.forEach((track, index) => audioSelect.add(new Option(audioLabel(track, index), String(track.streamIndex))));
+      let preferred = null;
+      let preferOriginal = false;
+      try {
+        const stored = localStorage.getItem(audioTrackKey);
+        preferOriginal = stored === 'original';
+        const storedIndex = Number(stored);
+        if (audioTracks.some(track => track.streamIndex === storedIndex)) preferred = storedIndex;
+      } catch { /* Use the video's first audio stream. */ }
+      const selected = preferred ?? audioTracks[0].streamIndex;
+      audioSelect.value = preferOriginal ? 'original' : String(selected);
+      audioSelect.disabled = audioTracks.length < 2;
+      audioSelect.title = audioTracks.length > 1 ? 'Choose an embedded audio track' : 'This video has one audio track.';
+      if (preferOriginal) {
+        selectedAudioStream = null;
+      } else if (preferred !== null && selected !== audioTracks[0].streamIndex) {
+        const applySaved = () => switchAudioTrack(selected);
+        if (video.readyState >= HTMLMediaElement.HAVE_METADATA) applySaved();
+        else video.addEventListener('loadedmetadata', applySaved, { once: true });
+      } else {
+        selectedAudioStream = audioTracks[0].streamIndex;
+        applyNativeAudioTrack(selectedAudioStream);
+      }
+    } catch (error) {
+      audioSelect.add(new Option('Audio · unavailable', 'default'));
+      audioSelect.disabled = true;
+      audioSelect.title = error.message || 'Audio track information is unavailable.';
+    }
+  };
+
+  const saveSubtitlePreference = (value) => {
+    try { localStorage.setItem(`movie-watchlist-subtitle-${mediaId}`, value); } catch { /* Optional preference. */ }
+  };
+
+  const noteSeconds = document.getElementById('studyNoteSeconds');
+  const noteTimestamp = document.getElementById('studyNoteTimestamp');
+  const setNoteTimestamp = () => {
+    const seconds = Number.isFinite(video.currentTime) ? Math.max(0, Math.floor(video.currentTime)) : 0;
+    if (noteSeconds) noteSeconds.value = String(seconds);
+    if (noteTimestamp) noteTimestamp.textContent = formatTime(seconds);
+  };
+
   const savedPosition = () => {
     try { return Number(localStorage.getItem(progressKey)) || 0; } catch { return 0; }
   };
@@ -256,7 +393,7 @@
 
       let preferred = null;
       try {
-        const saved = localStorage.getItem(`movie-watchlist-subtitle-${shell.dataset.mediaId}`);
+        const saved = localStorage.getItem(`movie-watchlist-subtitle-${mediaId}`);
         if ([...captions.options].some(option => option.value === saved && !option.disabled)) preferred = saved;
       } catch { /* Use the external sidecar when no preference is stored. */ }
       if (preferred === null) preferred = result.external ? `external:${result.external.url}` : 'off';
@@ -304,7 +441,7 @@
     }
     const selection = captions.value === 'off' ? enabled.value : 'off';
     captions.value = selection;
-    try { localStorage.setItem(`movie-watchlist-subtitle-${shell.dataset.mediaId}`, selection); } catch { /* Optional preference. */ }
+    saveSubtitlePreference(selection);
     setCaptionSelection(selection);
   };
 
@@ -338,7 +475,7 @@
   });
   captions.addEventListener('change', () => {
     if (captions.value.startsWith('unsupported:')) return;
-    try { localStorage.setItem(`movie-watchlist-subtitle-${shell.dataset.mediaId}`, captions.value); } catch { /* Optional preference. */ }
+    saveSubtitlePreference(captions.value);
     setCaptionSelection(captions.value);
   });
   speed.addEventListener('change', () => {
@@ -351,10 +488,38 @@
   });
   if (subtitleSize) {
     let savedSubtitleSize = null;
-    try { savedSubtitleSize = localStorage.getItem(subtitleSizeKey); } catch { /* Keep the default size. */ }
+    try { savedSubtitleSize = localStorage.getItem(subtitleSizeKey) || localStorage.getItem('movie-watchlist-subtitle-size'); } catch { /* Keep the default size. */ }
     applySubtitleSize(savedSubtitleSize || subtitleSize.value);
     subtitleSize.addEventListener('change', () => applySubtitleSize(subtitleSize.value, true));
   }
+  if (aspectRatioSelect) {
+    try {
+      const savedRatio = localStorage.getItem(aspectRatioKey);
+      if ([...aspectRatioSelect.options].some(option => option.value === savedRatio)) aspectRatioSelect.value = savedRatio;
+    } catch { /* Keep automatic source ratio. */ }
+    aspectRatioSelect.addEventListener('change', () => {
+      try { localStorage.setItem(aspectRatioKey, aspectRatioSelect.value); } catch { /* This session still uses the selected ratio. */ }
+      lastStageFit = '';
+      scheduleStageFit();
+    });
+  }
+  if (audioSelect) audioSelect.addEventListener('change', () => {
+    if (audioSelect.value === 'original') switchToOriginalAudio();
+    else switchAudioTrack(Number(audioSelect.value));
+  });
+
+  const bookmarkMoment = document.getElementById('bookmarkMoment');
+  bookmarkMoment?.addEventListener('click', () => {
+    setNoteTimestamp();
+    document.getElementById('studyNoteText')?.focus();
+  });
+  document.getElementById('studyNoteForm')?.addEventListener('submit', setNoteTimestamp);
+  document.querySelectorAll('.study-note-time').forEach(button => button.addEventListener('click', () => {
+    const target = Number(button.dataset.noteSeconds);
+    if (!Number.isFinite(target)) return;
+    video.currentTime = target;
+    video.play().catch(() => { /* Seeking still works if autoplay is blocked. */ });
+  }));
   document.getElementById('fullscreenToggle').addEventListener('click', toggleFullscreen);
   document.getElementById('theaterToggle').addEventListener('click', () => {
     shell.classList.toggle('theater-mode');
@@ -380,7 +545,19 @@
   video.addEventListener('loadedmetadata', () => {
     lastStageFit = '';
     fitStageToVideo();
+    loadAudioTracks();
     updateTimeline();
+    if (audioSwitchState) {
+      const state = audioSwitchState;
+      audioSwitchState = null;
+      if (Number.isFinite(video.duration)) video.currentTime = Math.min(state.time, Math.max(0, video.duration - .1));
+      if (state.captions && state.captions !== 'off') setCaptionSelection(state.captions);
+      if (state.wasPlaying) video.play().catch(() => { /* Playback remains paused with controls available. */ });
+      audioSelect.disabled = audioTracks.length < 2;
+      if (selectedAudioStream !== null) audioSelect.value = String(selectedAudioStream);
+      else audioSelect.value = 'original';
+      return;
+    }
     const resumeAt = savedPosition();
     if (resumeAt > 5 && (!Number.isFinite(video.duration) || video.duration - resumeAt > 30)) {
       document.getElementById('resumePromptText').textContent = `Resume from ${formatTime(resumeAt)}?`;

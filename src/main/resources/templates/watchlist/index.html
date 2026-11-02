@@ -11,7 +11,8 @@
   <p class="eyebrow">YOUR COLLECTION</p>
   <div class="section-heading list-heading"><div><h1 class="page-title">My <span>watchlist.</span></h1>
     <p class="page-lede">All the movies and series you’re looking forward to.</p></div>
-    <a class="button button-quiet" th:href="@{/search}">Find another title <span aria-hidden="true">→</span></a>
+    <div class="online-actions"><a class="button button-quiet" th:href="@{/collections}">My collections</a>
+      <a class="button button-quiet" th:href="@{/search}">Find another title <span aria-hidden="true">→</span></a></div>
   </div>
   <p class="success-message" th:if="${notice}" th:text="${notice}">Watchlist update</p>
   <section class="watchlist-grid" th:if="${!#lists.isEmpty(entries)}">

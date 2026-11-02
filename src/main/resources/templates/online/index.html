@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><meta name="description" content="A separate home for online streaming sources in ReelShelf.">
+  <link rel="manifest" th:href="@{/manifest.webmanifest}"><title>Online · ReelShelf</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="apple-touch-icon" th:href="@{/images/app-icon.svg}">
+  <link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content online-page">
+  <p class="eyebrow">A SEPARATE STREAMING SPACE</p>
+  <h1 class="page-title">Watch <span>beyond your library.</span></h1>
+  <p class="page-lede online-lede">Online titles will live here, separate from the video files stored on this PC.</p>
+
+  <section class="online-connect-card" aria-labelledby="online-connect-title">
+    <div class="online-connect-mark" aria-hidden="true">▶</div>
+    <div class="online-connect-copy">
+      <p class="eyebrow">STREAMING PROVIDER</p>
+      <h2 id="online-connect-title">No provider is connected yet</h2>
+      <p>Once the provider API details are available, this page can search its catalog and open its supported streams. Nothing here changes your local videos or playback.</p>
+      <div class="online-status"><span class="online-status-dot" aria-hidden="true"></span> Waiting for provider setup</div>
+    </div>
+  </section>
+
+  <section class="online-info-grid" aria-label="How online streaming will work">
+    <article class="online-info-card">
+      <span class="online-info-icon" aria-hidden="true">⌕</span>
+      <h2>Browse separately</h2>
+      <p>Provider search and streaming results will have their own page, so API or internet issues won’t hide your local collection.</p>
+    </article>
+    <article class="online-info-card">
+      <span class="online-info-icon" aria-hidden="true">↔</span>
+      <h2>Connect titles by reference</h2>
+      <p>When a provider supplies a matching TMDB ID, online titles can share artwork and details while remaining a separate source.</p>
+    </article>
+    <article class="online-info-card">
+      <span class="online-info-icon" aria-hidden="true">▤</span>
+      <h2>Your files stay local</h2>
+      <p>Local video paths, files, and playback continue to be managed by My media on this computer.</p>
+    </article>
+  </section>
+
+  <div class="online-actions">
+    <a class="button" th:href="@{/library}">Open My media <span aria-hidden="true">→</span></a>
+    <a class="button button-quiet" th:href="@{/search}">Browse movie details</a>
+  </div>
+</main>
+</body>
+</html>

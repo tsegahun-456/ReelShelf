@@ -10,7 +10,7 @@
   <p class="eyebrow">YOUR FILES · AUTO SCAN</p>
   <div class="section-heading list-heading"><div><h1 class="page-title">My <span>library.</span></h1>
     <p class="page-lede">Your local videos, arranged like a streaming library. TMDB artwork and details appear automatically when available.</p></div>
-    <span class="library-count" th:text="${libraryCount} + ' videos'">0 videos</span></div>
+    <div class="library-heading-actions"><span class="library-count" th:text="${libraryCount} + ' videos'">0 videos</span><a class="button button-quiet button-small" th:href="@{/library/review}">Scan review</a></div></div>
   <p class="success-message" th:if="${notice}" th:text="${notice}">Title updated.</p>
   <p class="notice" th:if="${libraryWarning}" th:text="${libraryWarning}">TMDB reference unavailable.</p>
   <div class="library-summary">
@@ -43,7 +43,7 @@
           <p class="show-overview" th:if="${movie.tmdbOverview != null and !#strings.isEmpty(movie.tmdbOverview)}" th:text="${movie.tmdbOverview}">Movie overview</p>
           <div class="media-card-actions"><a class="button button-small" th:href="@{/library/{id}/play(id=${movie.id})}">Play</a>
             <span class="media-subtitle-badge" th:if="${movie.subtitlePath != null}">CC</span>
-            <form th:if="${movie.tmdbPosterPath == null or #strings.isEmpty(movie.tmdbPosterPath)}" th:action="@{/library/{id}/tmdb-match(id=${movie.id})}" method="post" class="tmdb-match-form"><button class="text-button" type="submit">Find poster</button></form>
+            <form th:action="@{/library/{id}/tmdb-match(id=${movie.id})}" method="post" class="tmdb-match-form"><button class="text-button" type="submit" th:text="${movie.tmdbPosterPath == null or #strings.isEmpty(movie.tmdbPosterPath) ? 'Find poster' : 'Change reference'}">Find poster</button></form>
             <details class="media-rename"><summary aria-label="Correct movie title">✎</summary><form th:action="@{/library/{id}/rename(id=${movie.id})}" method="post">
               <label th:for="|title-${movie.id}|">Correct display title</label><input type="text" name="title" th:id="|title-${movie.id}|" th:value="${movie.displayTitle}" maxlength="400" required><button class="button button-small" type="submit">Save title</button>
             </form></details>

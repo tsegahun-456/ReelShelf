@@ -16,7 +16,7 @@ The Movie Watchlist persistence architecture is engineered for low latency, offl
 1. **Local Relational Store (PostgreSQL / H2):** The primary operational database accessed by Spring Data JPA. It maintains local user records, full watchlist/watched state, the scanned media library index, cached posters, and session credentials.
 2. **Cloud Document Store (Google Cloud Firestore):** The distributed multi-device synchronization layer. It replicates user watchlists and ratings across devices using Firestore security rules.
 
-Schema evolution is strictly managed through **Flyway versioned migration scripts** (`V1` to `V8`).
+Schema evolution is strictly managed through **Flyway versioned migration scripts** (`V1` to `V11`). Portable H2 also lists the corresponding tables in `db/portable-schema.sql` and lets JPA add compatible entity columns.
 
 ---
 
@@ -26,10 +26,13 @@ Schema evolution is strictly managed through **Flyway versioned migration script
 erDiagram
     APP_USER ||--o{ WATCHLIST_ENTRY : "owns"
     APP_USER ||--o{ WATCHED_ENTRY : "owns"
+    APP_USER ||--o{ USER_COLLECTION : "owns"
     APP_USER ||--o| FIREBASE_CREDENTIAL : "links"
     APP_USER ||--o{ PERSISTENT_LOGINS : "maintains"
     
     LOCAL_MEDIA }o--o| LOCAL_MEDIA_POSTER_CACHE : "references"
+    LOCAL_MEDIA ||--o{ MEDIA_STUDY_NOTE : "has notes"
+    USER_COLLECTION ||--o{ USER_COLLECTION_ITEM : "contains"
     LOCAL_MEDIA ||--o| MEDIA_SCAN_ROOT : "originates_from"
 
     APP_USER {
@@ -89,6 +92,43 @@ erDiagram
         text tmdb_overview "Synopsis from TMDB"
         varchar tmdb_poster_path "Poster path from TMDB"
         varchar tmdb_release_date "Release date from TMDB"
+        boolean tmdb_match_reviewed "Explicit user review flag"
+        integer parser_version "Scanner parser metadata version"
+    }
+
+    MEDIA_STUDY_NOTE {
+        bigint id PK
+        bigint media_id FK "local_media(id), cascade delete"
+        bigint at_seconds "Timestamp in source video"
+        varchar note_text "Private note, max 2000 characters"
+        timestamptz created_at
+    }
+
+    USER_COLLECTION {
+        bigint id PK
+        bigint user_id FK "app_user(id), cascade delete"
+        varchar name "Unique per account, max 80 characters"
+        timestamptz created_at
+    }
+
+    USER_COLLECTION_ITEM {
+        bigint id PK
+        bigint collection_id FK "user_collection(id), cascade delete"
+        bigint tmdb_id "Catalog reference"
+        varchar media_type "MOVIE or TV"
+        varchar title "Cached title"
+        varchar poster_path "Cached catalog reference"
+        varchar release_date
+        numeric vote_average
+        varchar genre_names "Pipe-delimited genre labels"
+        timestamptz added_at
+    }
+
+    LOCAL_SERIES_GROUP_ALIAS {
+        varchar alias_key PK "Normalized alias title"
+        varchar alias_title "Original scanned series label"
+        varchar canonical_title "User-selected grouping target"
+        timestamptz created_at
     }
 
     LOCAL_MEDIA_POSTER_CACHE {
@@ -138,6 +178,9 @@ The database schema is constructed through versioned SQL scripts located in `src
 | **V6** | `V6__link_accounts_to_firebase_identity.sql` | Adds `firebase_uid` with a unique partial index to `app_user` for federated authentication. |
 | **V7** | `V7__create_persistent_sign_in.sql` | Implements `persistent_logins` (Spring Security token store) and `firebase_credential` for encrypted refresh token persistence. |
 | **V8** | `V8__create_media_scan_root.sql` | Introduces `media_scan_root` allowing users to configure dynamic directory paths for media scanning via UI settings. |
+| **V9** | `V9__add_study_notes_and_named_collections.sql` | Adds timestamped local media notes and account-owned named collections with cached catalog entries. |
+| **V10** | `V10__add_reviewed_poster_matches_and_series_aliases.sql` | Adds explicit poster review state and user-managed canonical series aliases. |
+| **V11** | `V11__add_scanner_parser_version.sql` | Marks scanner parser versions so existing local file metadata can be safely re-derived on the next scan. |
 
 ---
 

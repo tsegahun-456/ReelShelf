@@ -15,8 +15,8 @@
       <div class="series-hero-meta"><span th:text="${seasonLabel}">0 seasons</span><span th:text="${episodeCount == 1 ? '1 episode' : episodeCount + ' episodes'}">0 episodes</span>
         <span th:if="${show.tmdbReleaseDate != null and !#strings.isEmpty(show.tmdbReleaseDate)}" th:text="${#strings.substring(show.tmdbReleaseDate,0,4)}">Year</span></div>
       <p class="series-hero-overview" th:if="${show.tmdbOverview != null and !#strings.isEmpty(show.tmdbOverview)}" th:text="${show.tmdbOverview}">Optional catalogue description.</p>
-      <form th:if="${show.tmdbId == null}" th:action="@{/library/series/tmdb-match}" method="post" class="tmdb-match-form">
-        <input type="hidden" name="title" th:value="${show.seriesTitle}"><button class="button button-quiet" type="submit">Find poster and details</button>
+      <form th:action="@{/library/series/tmdb-match}" method="post" class="tmdb-match-form">
+        <input type="hidden" name="title" th:value="${seriesTitle}"><button class="button button-quiet" type="submit" th:text="${show.tmdbId == null ? 'Find poster and details' : 'Change catalog reference'}">Find poster and details</button>
       </form>
     </div>
   </section>

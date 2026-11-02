@@ -11,9 +11,9 @@
   <p class="eyebrow">SETTINGS</p>
   <div class="section-heading list-heading"><div><h1 class="page-title">Where to <span>look.</span></h1>
     <p class="page-lede">ReelShelf only searches the folders you choose. Add the drives and folders that hold your movies and series.</p></div>
-    <form th:action="@{/settings/scan}" method="post">
+    <div class="library-heading-actions"><a class="button button-quiet button-small" th:href="@{/library/review}">Scan review</a><form th:action="@{/settings/scan}" method="post">
       <button class="button" type="submit">Scan now</button>
-    </form>
+    </form></div>
   </div>
   <p class="success-message" th:if="${notice}" th:text="${notice}">Folder updated</p>
   <p class="error-message" th:if="${error}" th:text="${error}">Folder error</p>

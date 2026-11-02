@@ -11,8 +11,11 @@ A Spring Boot movie and TV discovery, watchlist, and local media library.
 - Home-page recommendations based on the signed-in user's recently saved titles.
 - A profile overview with account details and collection counts.
 - An installable PWA shell with a useful offline page; local movie playback and the cached library stay on this PC. Cross-PC watchlist and watched-history changes need an internet connection.
-- A local media library with separate movie and series shelves, TMDB poster/details matching, and series grouped into season folders with ordered episodes. Poster images are stored in PostgreSQL for offline use and removed when their last local video disappears. The library scans configured folders, streams local video, and supports matching external SRT/VTT captions plus embedded text subtitle tracks in formats FFmpeg can convert to WebVTT.
-- A dedicated cinema-style local player with seeking, skip controls, remembered resume position, volume, playback speed, keyboard shortcuts, subtitle-track selection, fullscreen, theater mode, picture-in-picture, and optional next-episode autoplay.
+- A local media library with separate movie and series shelves, conservative TMDB poster matching, and series grouped into season folders with ordered episodes. Poster images are stored in PostgreSQL for offline use and removed when their last local video disappears. The library scans configured folders, streams local video, and supports external and embedded captions plus selectable embedded audio tracks.
+- A separate **Online** page reserved for an external streaming provider. It currently shows a clear unconfigured state; provider search and playback require the provider's API documentation and compatible playback endpoints. The local library stays independent.
+- A dedicated cinema-style local player with per-video audio/subtitle/size/aspect preferences, timestamped study notes and bookmarks, seeking, remembered resume position, keyboard shortcuts, fullscreen, theater mode, picture-in-picture, and optional next-episode autoplay.
+- A scan review page with scan progress, unreadable paths, possible duplicate files, candidate series-group merges, and manual TMDB result selection. No uncertain metadata correction is applied automatically.
+- Named collections with year, genre, and local-file availability filters; separate from the Firebase-synced **My list**.
 - Flyway-managed schema creation and Docker Compose packaging.
 
 The Flutter app remains unchanged and is the behavior reference while features are ported.
@@ -31,7 +34,8 @@ Comprehensive engineering documentation is available in the [`docs/`](docs/) dir
 - [**Comprehensive Academic SRS & SDD Master Specification (Markdown)**](docs/SRS_COMPREHENSIVE.md): Complete 5-chapter institutional and enterprise specification adhering to the Dire Dawa University Department of Software Engineering standard (Chapters 1–5, Cost of Inaction, 9 Sequence Diagrams, 3 DFD Levels, Class Diagrams, Activity Diagrams, ERD, and RTM Matrix).
 - [**Software Requirements Specification (SRS)**](docs/SRS.md): IEEE 830 / ISO 29148 compliant requirements, functional breakdown, and acceptance criteria.
 - [**Architecture & Technical Design (SDD)**](docs/ARCHITECTURE.md): Subsystems, security boundary layers, and Mermaid sequence workflows (streaming, subtitle transcoding, cloud sync).
-- [**Database & Data Model Specification**](docs/DATABASE.md): Entity-Relationship Diagram (ERD), Flyway schema migration history (V1–V8), and Cloud Firestore data schema.
+- [**Database & Data Model Specification**](docs/DATABASE.md): Entity-Relationship Diagram (ERD), Flyway schema migration history (V1–V11), and Cloud Firestore data schema.
+- [**0.3.0 release notes**](CHANGELOG.md): feature summary and migration notes.
 - [**Deployment & Operations Guide**](docs/DEPLOYMENT_GUIDE.md): Docker Compose multi-container setup, environment variable matrix, and troubleshooting runbooks.
 - [**Firebase Setup Guide**](docs/FIREBASE_SETUP.md): Cloud authentication and Firestore rule configuration.
 - [**Portable Linux Guide**](docs/PORTABLE_LINUX.md): Running offline with embedded H2.
@@ -69,14 +73,51 @@ For a local browser preview on port `8081`, load the local database settings fro
 ```sh
 set -a; . ./.env; set +a
 ./mvnw package
-java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.2.jar --server.port=8081
+java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.3.0.jar --server.port=8081
 ```
 
 The preview uses PostgreSQL and keeps accounts and lists when the app restarts. Configure `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` for your local database in `.env`.
 
-The preview scans the folders listed in Settings (seeded once from `MEDIA_ROOTS`) every five minutes by default (`MEDIA_SCAN_INTERVAL_MS`), or instantly when you click **Scan now**. It ignores the Music, recycle-bin, and Windows system folders. New files appear in **My media** without copying video into PostgreSQL. TMDB posters and descriptions are matched in the background when the key and internet are available. Movies and series have separate shelves; opening a series shows season folders and sorted episodes. The player remembers playback position and offers speed, seek, keyboard, picture-in-picture, fullscreen/theater, and next-episode controls. It discovers embedded subtitles with `ffprobe` and converts selected text tracks to WebVTT with `ffmpeg`; matching `.srt` and `.vtt` sidecars remain available as well. Image-based DVD/PGS subtitles are listed but cannot be shown as selectable browser captions. Display titles can be corrected in the library. The local library preview is viewable without sign-in and binds to localhost only; account-backed watchlists still require sign-in.
+The preview scans the folders listed in Settings (seeded once from `MEDIA_ROOTS`) every five minutes by default (`MEDIA_SCAN_INTERVAL_MS`), or instantly when you click **Scan now**. It ignores the Music, recycle-bin, and Windows system folders. New files appear in **My media** without copying video into PostgreSQL. TMDB posters and descriptions use conservative automatic matches; uncertain choices can be reviewed and selected in **My media → Scan review**. Scan review also reports unreadable paths, possible duplicate files, and similar series names; it never deletes or merges media automatically. A parser-version update re-reads scan metadata on the next successful scan while retaining paths, title overrides, TMDB links, and playback data.
 
-Docker Compose installs FFmpeg in the application container and mounts `${MEDIA_HOST_ROOT}` read-only at `/media/library`; change that environment value if the partition is mounted elsewhere. If running the Spring app directly on the host instead of Docker, install FFmpeg and ensure both `ffmpeg` and `ffprobe` are on the app's `PATH` (or set `FFMPEG_COMMAND` and `FFPROBE_COMMAND`). The player will still show matching sidecar subtitle files if those tools are unavailable.
+Movies and series have separate shelves; opening a series shows season folders and sorted episodes. The player remembers playback position and per-video audio track, subtitle track and size, and aspect ratio. It offers speed, seek, keyboard, picture-in-picture, fullscreen/theater, next-episode controls, and timestamped private notes/bookmarks. Audio track selection is native where a browser supports it; otherwise FFmpeg makes a cached compatible playback copy without modifying the source video. Embedded subtitle tracks are discovered with `ffprobe` and converted to WebVTT with `ffmpeg`; matching `.srt` and `.vtt` sidecars remain available as well. Image-based DVD/PGS subtitles are listed but cannot be shown as selectable browser captions. Collections add named movie/series lists with year, genre, and local-file filters; they stay in the local app database, apart from the Firebase-synced **My list**. The separate **Online** page stays independent from local files until a streaming provider is configured. The local library preview is viewable without sign-in and binds to localhost only; account-backed watchlists and named collections require sign-in.
+
+Docker Compose installs FFmpeg in the application container and mounts `${MEDIA_HOST_ROOT}` read-only at `/media/library`; change that environment value if the partition is mounted elsewhere. If running the Spring app directly on the host instead of Docker, install FFmpeg and ensure both `ffmpeg` and `ffprobe` are on the app's `PATH` (or set `FFMPEG_COMMAND` and `FFPROBE_COMMAND`). On portable builds FFmpeg is an optional host dependency for embedded audio/subtitle inspection and conversion; without it, browser-default audio and sidecar subtitles still work.
+
+## Developer and AI contributor guide
+
+Use this section when changing ReelShelf so source changes, local data, and portable releases stay consistent.
+
+### Where changes belong
+
+- `src/main/java/com/segi/watchlist/`: Spring MVC controllers, services, entities, repositories, and integrations.
+- `src/main/resources/templates/`: Thymeleaf pages and fragments, including the independent `/online` landing page; `src/main/resources/static/`: CSS, JavaScript, icons, and the PWA service worker.
+- `src/main/resources/db/migration/`: versioned Flyway SQL migrations. Add a new migration for schema changes; do not rewrite migrations already used by existing databases.
+- `scripts/` and `portable-windows/`: portable app packaging, launch, update, and desktop integration. Keep Linux and Windows behavior aligned.
+- `docs/`: architecture, deployment, database, Firebase, and portable usage guides. Update the relevant guide when a feature changes how the app is configured, used, or packaged.
+
+Read [Architecture & Technical Design](docs/ARCHITECTURE.md), [Database & Data Model](docs/DATABASE.md), and the relevant deployment guide before changing those areas. The portable app uses its own H2 database and user config; Docker/development commonly uses PostgreSQL. Do not assume that changing one deployment profile changes the other.
+
+### Safe change workflow
+
+1. Inspect the existing implementation and relevant documentation; make a focused change in the source of truth instead of editing generated files under `target/` or extracted/archive bundles.
+2. Check whether the change affects local media, user settings, authentication, persisted watchlists, database schemas, or both portable platforms. Keep each PC's media paths and local database local.
+3. For schema changes, add the next Flyway migration and check compatibility with both PostgreSQL and portable H2. Preserve existing library entries, playback state, settings, and account data; never use a destructive reset as an upgrade strategy.
+4. Update relevant README/docs and user-facing setup instructions. Keep secrets, personal config, local databases, logs, and media out of source control and release archives.
+5. Build and run the narrowest relevant checks, then exercise the affected flow. When packaging is part of the change, build and review both portable packages rather than copying a JAR over an existing archive.
+
+### Build and release portable packages
+
+The release version is declared in `pom.xml`; the package scripts use it to name the application JAR. With JDK 21 and the required packaging tools installed, build from the repository root:
+
+```bash
+./scripts/package-linux-portable.sh
+./scripts/package-windows-portable.sh
+```
+
+The scripts create archives and SHA-256 files under `target/portable-linux/` and `target/portable-windows/`. Linux packaging requires Linux x86-64 with `jpackage`; Windows packaging can be produced from Linux and includes a portable Windows Java runtime. Never include a user's media, database, local settings, Firebase credentials, or TMDB key in a bundle.
+
+GitHub Actions runs [.github/workflows/release.yml](.github/workflows/release.yml) when a `v*` tag is pushed. For an approved release, update the version and release notes, build and inspect both archives, commit the intended source changes, then push the version tag (for example, `v0.3.0`). The workflow publishes both archives and checksums to the GitHub release. Do not move a tag or publish a release until the tagged source and package contents have been reviewed.
 
 ## Current scope
 

@@ -41,7 +41,7 @@ jpackage \
   --input "$INPUT_DIR" \
   --main-jar "$APP_IMAGE_JAR" \
   --dest "$IMAGE_DIR" \
-  --add-modules java.desktop,java.net.http \
+  --add-modules ALL-MODULE-PATH \
   --jlink-options '--strip-debug --no-man-pages --no-header-files' \
   --java-options '-Dspring.profiles.active=portable' \
   --java-options '-Dfile.encoding=UTF-8'

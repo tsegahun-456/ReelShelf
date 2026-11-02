@@ -61,7 +61,7 @@ public class SecurityConfiguration {
         return http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests(authorize -> {
-                    authorize.requestMatchers("/", "/search", "/movie/**", "/tv/**", "/login", "/signup", "/css/**", "/js/**", "/images/**", "/fonts/**", "/manifest.webmanifest", "/sw.js", "/offline.html", "/error", "/actuator/health").permitAll();
+                    authorize.requestMatchers("/", "/search", "/movie/**", "/tv/**", "/online", "/login", "/signup", "/css/**", "/js/**", "/images/**", "/fonts/**", "/manifest.webmanifest", "/sw.js", "/offline.html", "/error", "/actuator/health").permitAll();
                     if (publicLocalLibrary) authorize.requestMatchers(
                             "/library/**", "/settings", "/settings/**", "/api/settings/update/**").permitAll();
                     authorize.anyRequest().authenticated();

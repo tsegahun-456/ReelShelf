@@ -13,6 +13,9 @@ REQUIREMENTS
   Eclipse Temurin JRE - no installer, no admin rights needed).
 - A local video folder (C:\Movies, an external drive, ...).
 - Optional: internet for TMDB posters/descriptions and for sign-in sync.
+- Optional FFmpeg + FFprobe on PATH for embedded subtitle discovery/conversion
+  and selectable embedded audio tracks. The app still runs without them and
+  uses browser-default audio plus external .srt/.vtt subtitle files.
 
 
 INSTALL & RUN

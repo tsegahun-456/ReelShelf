@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}">
+  <title th:text="|${collection.name} · ReelShelf|">Collection · ReelShelf</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content collection-page">
+  <a class="back-link" th:href="@{/collections}">← All collections</a>
+  <p class="eyebrow">CURATED COLLECTION</p>
+  <div class="section-heading list-heading"><div><h1 class="page-title" th:text="${collection.name}">Study</h1>
+    <p class="page-lede">Filter this list by release year, genre, and whether a matching file is on this PC.</p></div>
+    <a class="button button-quiet" th:href="@{/search}">Find titles</a>
+  </div>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Collection updated.</p>
+  <form class="collection-filters" th:action="@{/collections/{id}(id=${collection.id})}" method="get">
+    <label>Year<select name="year"><option value="">Any year</option><option th:each="option : ${yearOptions}" th:value="${option}" th:selected="${option == selectedYear}" th:text="${option}">2025</option></select></label>
+    <label>Genre<select name="genre"><option value="">Any genre</option><option th:each="option : ${genreOptions}" th:value="${option}" th:selected="${option == selectedGenre}" th:text="${option}">Drama</option></select></label>
+    <label>Local availability<select name="local"><option value="ANY" th:selected="${selectedLocal == 'ANY'}">Any</option><option value="AVAILABLE" th:selected="${selectedLocal == 'AVAILABLE'}">On this PC</option><option value="MISSING" th:selected="${selectedLocal == 'MISSING'}">Not on this PC</option></select></label>
+    <label class="collection-disabled-filter">Online availability<select disabled aria-label="Online availability unavailable"><option>Provider not connected</option></select></label>
+    <button class="button" type="submit">Apply filters</button>
+  </form>
+  <p class="collection-filter-note">Online availability will be available after a streaming provider is connected.</p>
+  <section class="movie-grid collection-items" th:if="${!#lists.isEmpty(items)}">
+    <article class="movie-card" th:each="entry : ${items}">
+      <a class="poster-link" th:href="${entry.item.detailsPath}"><img class="poster" th:if="${!#strings.isEmpty(entry.item.posterPath)}" th:src="|https://image.tmdb.org/t/p/w500${entry.item.posterPath}|" th:alt="|${entry.item.title} poster|" loading="lazy"><span class="poster poster-placeholder" th:unless="${!#strings.isEmpty(entry.item.posterPath)}">RS</span></a>
+      <div class="movie-card-info"><h2 class="movie-title"><a th:href="${entry.item.detailsPath}" th:text="${entry.item.title}">Title</a></h2>
+        <p class="movie-year" th:text="${entry.item.year}">2025</p>
+        <span class="collection-availability" th:classappend="${entry.localAvailable ? ' is-local' : ''}" th:text="${entry.localAvailable ? 'On this PC' : 'Not on this PC'}">Not on this PC</span>
+        <form th:action="@{/collections/{id}/items/{itemId}/remove(id=${collection.id},itemId=${entry.item.id})}" method="post"><button class="save-button" type="submit">Remove from collection</button></form>
+      </div>
+    </article>
+  </section>
+  <div class="empty-panel" th:if="${#lists.isEmpty(items)}"><div class="empty-icon" aria-hidden="true">⌕</div><h2>No titles match these filters</h2><p>Change the filters or add a title from its movie or series detail page.</p><a class="button" th:href="@{/search}">Browse titles</a></div>
+</main>
+</body>
+</html>

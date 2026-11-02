@@ -1,0 +1,1 @@
+ALTER TABLE local_media ADD COLUMN parser_version INTEGER NOT NULL DEFAULT 0;

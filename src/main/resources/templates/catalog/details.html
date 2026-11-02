@@ -26,6 +26,8 @@
       <div class="genre-list" th:if="${!#lists.isEmpty(details.genres)}"><span class="genre-chip" th:each="genre : ${details.genres}" th:text="${genre}">Drama</span></div>
       <div class="hero-actions">
         <form th:if="${signedIn}" th:action="@{/watchlist/add}" method="post"><input type="hidden" name="movieId" th:value="${movie.id}"><input type="hidden" name="mediaType" th:value="${movie.mediaType}"><button class="button" type="submit">＋ Add to my list</button></form>
+        <form class="collection-add-inline" th:if="${signedIn and !#lists.isEmpty(userCollections)}" th:each="collection : ${userCollections}" th:action="@{/collections/{id}/items/add(id=${collection.id})}" method="post"><input type="hidden" name="movieId" th:value="${movie.id}"><input type="hidden" name="mediaType" th:value="${movie.mediaType}"><button class="button button-quiet" type="submit" th:text="|＋ ${collection.name}|">＋ Study</button></form>
+        <a class="button button-quiet" th:if="${signedIn and #lists.isEmpty(userCollections)}" th:href="@{/collections}">＋ Create a collection</a>
         <a class="button" th:unless="${signedIn}" th:href="@{/login}">Sign in to add to your list</a>
         <form th:if="${signedIn}" th:action="@{/watched/add}" method="post"><input type="hidden" name="movieId" th:value="${movie.id}"><input type="hidden" name="mediaType" th:value="${movie.mediaType}"><button class="button button-quiet" type="submit">✓ Mark watched</button></form>
         <a class="button button-quiet" th:unless="${signedIn}" th:href="@{/login}">Sign in to mark watched</a>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100d11"><link rel="manifest" th:href="@{/manifest.webmanifest}"><title>My collections · ReelShelf</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script>
+</head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content collection-page">
+  <p class="eyebrow">YOUR OWN CURATED LISTS</p>
+  <div class="section-heading list-heading"><div><h1 class="page-title">My <span>collections.</span></h1>
+    <p class="page-lede">Make named lists for study, movie nights, and anything else you want to remember.</p></div>
+    <a class="button button-quiet" th:href="@{/watchlist}">Open My list</a>
+  </div>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Collection updated.</p>
+  <p class="error-message" th:if="${error}" th:text="${error}">Collection error.</p>
+  <section class="collection-create-panel">
+    <div><p class="eyebrow">START A NEW LIST</p><h2>Create a collection</h2><p>Collections are saved with this app account on this PC. Your existing Firebase-synced My list remains separate.</p></div>
+    <form th:action="@{/collections/create}" method="post"><label class="sr-only" for="collectionName">Collection name</label>
+      <input id="collectionName" name="name" maxlength="80" required placeholder="For example, Study or Movie night">
+      <button class="button" type="submit">Create</button></form>
+  </section>
+  <section class="collection-grid" th:if="${!#lists.isEmpty(collections)}" aria-label="Your collections">
+    <article class="collection-card" th:each="collection : ${collections}">
+      <a class="collection-card-main" th:href="@{/collections/{id}(id=${collection.id})}">
+        <span class="collection-card-icon" aria-hidden="true">▤</span>
+        <span><strong th:text="${collection.name}">Study</strong><small th:text="${collection.itemCount} + ' titles'">0 titles</small></span>
+        <span class="collection-card-arrow" aria-hidden="true">→</span>
+      </a>
+      <form th:action="@{/collections/{id}/delete(id=${collection.id})}" method="post" onsubmit="return confirm('Delete this collection and its saved titles?')">
+        <button class="button button-quiet button-small" type="submit">Delete</button>
+      </form>
+    </article>
+  </section>
+  <div class="empty-panel" th:if="${#lists.isEmpty(collections)}">
+    <div class="empty-icon" aria-hidden="true">▤</div><h2>Your first collection is ready</h2>
+    <p>Create a list above, then add movies or series from their detail pages.</p>
+  </div>
+</main>
+</body>
+</html>

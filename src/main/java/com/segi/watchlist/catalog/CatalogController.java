@@ -2,6 +2,7 @@ package com.segi.watchlist.catalog;
 
 import com.segi.watchlist.watchlist.WatchlistEntry;
 import com.segi.watchlist.watchlist.WatchlistService;
+import com.segi.watchlist.watchlist.UserCollectionService;
 import com.segi.watchlist.cloud.FirebaseSessionPrincipal;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -25,11 +26,14 @@ public class CatalogController {
 
     private final MovieCatalogService catalog;
     private final WatchlistService watchlist;
+    private final UserCollectionService collections;
     private final Map<String, CachedRail> railCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public CatalogController(MovieCatalogService catalog, WatchlistService watchlist) {
+    public CatalogController(MovieCatalogService catalog, WatchlistService watchlist,
+                             UserCollectionService collections) {
         this.catalog = catalog;
         this.watchlist = watchlist;
+        this.collections = collections;
     }
 
     @GetMapping("/")
@@ -92,6 +96,7 @@ public class CatalogController {
 
     private String details(long id, String mediaType, Model model, Authentication authentication) {
         addAccount(model, authentication);
+        if (isSignedIn(authentication)) model.addAttribute("userCollections", collections.list(authentication.getName()));
         model.addAttribute("mediaType", mediaType);
         model.addAttribute("details", null);
         try {

@@ -19,12 +19,15 @@ public class LocalMediaTmdbMatcher {
     private static final Logger log = LoggerFactory.getLogger(LocalMediaTmdbMatcher.class);
     private final LocalMediaRepository repository;
     private final MovieCatalogService catalog;
+    private final LocalSeriesGroupAliasService seriesAliases;
     private final int matchBudget;
 
     public LocalMediaTmdbMatcher(LocalMediaRepository repository, MovieCatalogService catalog,
+                                 LocalSeriesGroupAliasService seriesAliases,
                                  @org.springframework.beans.factory.annotation.Value("${library.tmdb-match-budget:40}") int matchBudget) {
         this.repository = repository;
         this.catalog = catalog;
+        this.seriesAliases = seriesAliases;
         this.matchBudget = matchBudget;
     }
 
@@ -37,7 +40,7 @@ public class LocalMediaTmdbMatcher {
         for (LocalMedia row : localRows) {
             if (row.getTmdbId() != null) continue;
             boolean episode = "EPISODE".equals(row.getMediaKind());
-            String title = episode ? row.getSeriesTitle() : row.getDisplayTitle();
+            String title = episode ? seriesAliases.canonicalTitle(row.getSeriesTitle()) : row.getDisplayTitle();
             if (title == null || title.isBlank()) continue;
             String type = episode ? "TV" : "MOVIE";
             // Keep remakes with the same normalized name in separate targets. Otherwise the
@@ -67,23 +70,11 @@ public class LocalMediaTmdbMatcher {
                 if (choices.isEmpty() && yearFilter != null) {
                     choices = catalog.search(searchTitle, target.mediaType(), null, null, null);
                 }
-                List<MovieCard> closeMatches = choices.stream()
-                        .filter(this::hasPoster)
-                        .filter(card -> similarity(searchTitle, card.title()) >= 0.78)
-                        .toList();
-                String wantedYear = year;
-                List<MovieCard> sameYear = wantedYear == null ? List.of() : closeMatches.stream()
-                        .filter(card -> wantedYear.equals(releaseYear(card.releaseDate())))
-                        .toList();
-
-                // Prefer a release-year match for generic or repeated titles (for example, "The Runner").
-                // If TMDB has several equally close titles but none from the local file's year, leave it
-                // unlinked instead of attaching an unrelated poster.
-                List<MovieCard> eligible = !sameYear.isEmpty() ? sameYear
-                        : wantedYear != null && closeMatches.size() > 1 ? List.of() : closeMatches;
-                MovieCard best = eligible.stream()
-                        .max(java.util.Comparator.comparingDouble(card -> similarity(searchTitle, card.title())))
-                        .orElse(null);
+                List<MovieCard> candidates = choices.stream().filter(this::hasPoster).toList();
+                List<MovieCard> sameYear = year == null ? List.of() : candidates.stream()
+                        .filter(card -> year.equals(releaseYear(card.releaseDate()))).toList();
+                List<MovieCard> eligible = year == null ? candidates : sameYear;
+                MovieCard best = confidentMatch(searchTitle, eligible);
                 if (best != null) {
                     int updated = repository.updateUnmatchedTmdbForIds(target.ids(), best.id(), best.mediaType(),
                             best.title(), best.overview(), best.posterPath(), best.releaseDate());
@@ -111,6 +102,22 @@ public class LocalMediaTmdbMatcher {
 
     private boolean hasPoster(MovieCard card) {
         return card.posterPath() != null && !card.posterPath().isBlank();
+    }
+
+    /** Never auto-links on a substring hit. Ambiguous or year-mismatched results require review. */
+    private MovieCard confidentMatch(String title, List<MovieCard> candidates) {
+        if (candidates.isEmpty()) return null;
+        String wanted = normalize(title);
+        List<MovieCard> exact = candidates.stream().filter(card -> normalize(card.title()).equals(wanted)).toList();
+        if (exact.size() == 1) return exact.get(0);
+        if (exact.size() > 1) return null;
+        List<MovieCard> ranked = candidates.stream().filter(card -> similarity(title, card.title()) >= 0.92)
+                .sorted(java.util.Comparator.comparingDouble((MovieCard card) -> similarity(title, card.title())).reversed())
+                .toList();
+        if (ranked.isEmpty()) return null;
+        double top = similarity(title, ranked.get(0).title());
+        double runnerUp = ranked.size() > 1 ? similarity(title, ranked.get(1).title()) : 0;
+        return top >= 0.94 && (ranked.size() == 1 || top - runnerUp >= 0.10) ? ranked.get(0) : null;
     }
 
     static double similarity(String left, String right) {

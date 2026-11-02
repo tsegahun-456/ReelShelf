@@ -13,7 +13,7 @@
 
     <groupId>com.segi.watchlist</groupId>
     <artifactId>movie-watchlist-web</artifactId>
-    <version>0.2.2</version>
+    <version>0.3.0</version>
     <name>ReelShelf</name>
     <description>Responsive Spring Boot media library — discover, collect, and play.</description>
 

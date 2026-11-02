@@ -40,6 +40,8 @@ public class LocalMedia {
     @Column(name = "tmdb_overview", columnDefinition = "text") private String tmdbOverview;
     @Column(name = "tmdb_poster_path", length = 300) private String tmdbPosterPath;
     @Column(name = "tmdb_release_date", length = 32) private String tmdbReleaseDate;
+    @Column(name = "tmdb_match_reviewed", nullable = false) private boolean tmdbMatchReviewed;
+    @Column(name = "parser_version", nullable = false) private int parserVersion;
 
     protected LocalMedia() {}
 
@@ -56,6 +58,7 @@ public class LocalMedia {
                 || !java.util.Objects.equals(file.episodeNumber(), episodeNumber)
                 || !java.util.Objects.equals(file.episodeTitle(), episodeTitle)
                 || !java.util.Objects.equals(file.subtitlePath(), subtitlePath)
+                || parserVersion != MediaScanner.PARSER_VERSION
                 || file.fileSize() != fileSize
                 || !java.util.Objects.equals(file.modifiedAt(), modifiedAt);
         if (id == null || !file.filePath().equals(filePath)) filePath = file.filePath();
@@ -67,6 +70,7 @@ public class LocalMedia {
         episodeNumber = file.episodeNumber();
         episodeTitle = file.episodeTitle();
         subtitlePath = file.subtitlePath();
+        parserVersion = MediaScanner.PARSER_VERSION;
         fileSize = file.fileSize();
         modifiedAt = file.modifiedAt();
         if (changed) lastSeenAt = Instant.now();
@@ -106,5 +110,7 @@ public class LocalMedia {
     public String getTmdbOverview() { return tmdbOverview; }
     public String getTmdbPosterPath() { return tmdbPosterPath; }
     public String getTmdbReleaseDate() { return tmdbReleaseDate; }
+    public boolean isTmdbMatchReviewed() { return tmdbMatchReviewed; }
+    public int getParserVersion() { return parserVersion; }
     public String getTmdbDetailsPath() { return "TV".equals(tmdbMediaType) ? "/tv/" + tmdbId : "/movie/" + tmdbId; }
 }

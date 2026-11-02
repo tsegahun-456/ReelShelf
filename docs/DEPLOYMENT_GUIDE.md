@@ -140,7 +140,7 @@ The application provides specialized execution profiles tailored for different s
 ### 5.2 `preview` Profile
 - **Command:**
   ```bash
-  java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.2.jar --server.port=8081
+  java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.3.0.jar --server.port=8081
   ```
 - **Port:** Defaults to `8081`.
 - **Behavior:** `library.public-preview=true`. Allows immediate browsing and cinema video playback of local media without requiring user registration or login.
@@ -150,7 +150,7 @@ The application provides specialized execution profiles tailored for different s
 - **Command:**
   ```bash
   ./mvnw -Pportable package
-  java -Dspring.profiles.active=portable -jar target/movie-watchlist-web-0.2.2.jar
+  java -Dspring.profiles.active=portable -jar target/movie-watchlist-web-0.3.0.jar
   ```
 - **Storage:** Embedded file-based H2 database initialized via `db/portable-schema.sql`. Zero external PostgreSQL server needed.
 - **Target:** Offline laptops, USB stick installations, standalone portable media players.

@@ -8,7 +8,7 @@
 </head>
 <body class="player-body">
 <div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
-<main id="cinemaPlayer" class="content-wrap page-content cinema-player" th:attr="data-media-id=${item.id},data-tracks-url=@{/library/{id}/subtitle/tracks(id=${item.id})},data-next-url=${nextPlayUrl},data-prev-url=${previousPlayUrl}">
+<main id="cinemaPlayer" class="content-wrap page-content cinema-player" th:attr="data-media-id=${item.id},data-tracks-url=@{/library/{id}/subtitle/tracks(id=${item.id})},data-audio-tracks-url=@{/library/{id}/audio/tracks(id=${item.id})},data-next-url=${nextPlayUrl},data-prev-url=${previousPlayUrl}">
   <div class="player-heading">
     <a class="player-back" th:href="${backUrl}" aria-label="Back to library">‹ <span>Library</span></a>
     <div class="player-heading-copy">
@@ -56,6 +56,10 @@
               <span aria-hidden="true">CC</span>
               <select id="subtitleSelect" aria-label="Subtitles"><option value="off">Subtitles off</option></select>
             </label>
+            <label class="compact-control" title="Audio language and track">
+              <span aria-hidden="true">♫</span>
+              <select id="audioSelect" aria-label="Audio track"><option value="default">Audio · default</option></select>
+            </label>
             <label class="compact-control speed-control" title="Playback speed">
               <span aria-hidden="true">◷</span>
               <select id="speedSelect" aria-label="Playback speed">
@@ -83,10 +87,35 @@
           <option value="small">Small</option><option value="standard" selected>Standard</option><option value="large">Large</option><option value="xlarge">Extra large</option>
         </select>
       </label>
+      <label class="compact-control aspect-control" title="Video frame ratio">
+        <span aria-hidden="true">▭</span>
+        <select id="aspectRatioSelect" aria-label="Video frame ratio"><option value="auto">Auto</option><option value="16:9">16:9</option><option value="4:3">4:3</option><option value="21:9">21:9</option></select>
+      </label>
       <label class="auto-next" th:if="${shelfKind == 'episode' and nextItem != null}"><input type="checkbox" id="autoNext"><span>Play next episode automatically</span></label>
     </div>
     <div class="player-codec-note" id="codecNote" hidden>Playback depends on the browser's supported video and audio codecs. Try opening this page in Firefox or Chrome if the file does not start.</div>
   </div>
+
+  <section class="study-notes-panel" aria-labelledby="studyNotesTitle">
+    <div class="section-heading list-heading"><div><p class="eyebrow">YOUR PRIVATE STUDY NOTES</p><h2 id="studyNotesTitle">Notes & bookmarks</h2><p class="page-lede">Save a thought at the current moment. Notes are stored separately from the video file on this PC.</p></div></div>
+    <p class="error-message" th:if="${noteError}" th:text="${noteError}">Note error</p>
+    <p class="success-message" th:if="${notice}" th:text="${notice}">Study note saved.</p>
+    <form class="study-note-form" th:action="@{/library/{id}/notes(id=${item.id})}" method="post" id="studyNoteForm">
+      <input type="hidden" name="atSeconds" id="studyNoteSeconds" value="0">
+      <div class="study-note-form-head"><span>Timestamp <strong id="studyNoteTimestamp">0:00</strong></span><button class="button button-quiet button-small" type="button" id="bookmarkMoment">Use current time</button></div>
+      <label class="sr-only" for="studyNoteText">Study note</label>
+      <textarea id="studyNoteText" name="text" maxlength="2000" required placeholder="Write a note about this moment, a question, or a quote…"></textarea>
+      <button class="button" type="submit">Save note</button>
+    </form>
+    <div class="study-note-list" th:if="${!#lists.isEmpty(studyNotes)}">
+      <article class="study-note" th:each="note : ${studyNotes}">
+        <button class="study-note-time" type="button" th:attr="data-note-seconds=${note.atSeconds}" th:text="${note.timestampLabel}">0:00</button>
+        <p th:text="${note.text}">Study note</p>
+        <form th:action="@{/library/{id}/notes/{noteId}/delete(id=${item.id},noteId=${note.id})}" method="post"><button class="text-link" type="submit">Delete</button></form>
+      </article>
+    </div>
+    <p class="settings-hint" th:if="${#lists.isEmpty(studyNotes)}">No notes yet. Add one while watching to create your first bookmark.</p>
+  </section>
 
   <section class="player-reference" th:if="${item.tmdbId != null}">
     <img th:if="${item.tmdbPosterPath != null and !#strings.isEmpty(item.tmdbPosterPath)}" th:src="@{/library/posters/media/{id}(id=${item.id},v=${item.tmdbId})}" th:alt="|${item.tmdbTitle} poster|" onerror="this.style.display='none'">

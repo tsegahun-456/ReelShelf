@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#100d11"><title>Scan review · ReelShelf</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/images/app-icon.svg}"><link rel="stylesheet" th:href="@{/css/app.css}"><script defer th:src="@{/js/pwa.js}"></script><script defer th:src="@{/js/scan-review.js}"></script></head>
+<body>
+<div th:replace="~{fragments/site-header :: header(${activePage}, ${signedIn}, ${currentEmail})}"></div>
+<main class="content-wrap page-content scan-review-page">
+  <a class="back-link" th:href="@{/library}">← My media</a>
+  <p class="eyebrow">LIBRARY MAINTENANCE</p>
+  <div class="section-heading list-heading"><div><h1 class="page-title">Scan <span>review.</span></h1><p class="page-lede">See what the last scan found and review uncertain matches before changing them.</p></div><a class="button button-quiet" th:href="@{/settings}">Scan settings</a></div>
+  <p class="success-message" th:if="${notice}" th:text="${notice}">Saved.</p><p class="error-message" th:if="${error}" th:text="${error}">Review error.</p><p class="notice" th:if="${libraryWarning}" th:text="${libraryWarning}">TMDB unavailable.</p>
+  <section class="scan-status-panel" id="scanStatus" th:attr="data-status-url=@{/library/review/status}">
+    <div class="scan-status-heading"><div><p class="eyebrow">MOST RECENT SCAN</p><h2 th:text="${scan.running ? 'Scanning your folders…' : 'Scan status'}">Scan status</h2></div><span class="scan-running-badge" th:classappend="${scan.running ? ' is-running' : ''}" th:text="${scan.running ? 'Running' : 'Idle'}">Idle</span></div>
+    <div class="scan-progress-track"><span id="scanProgressBar" th:style="|width:${scan.progressPercent()}%|"></span></div>
+    <p class="scan-progress-copy" id="scanProgressCopy" th:text="|${scan.rootsCompleted} of ${scan.rootsTotal} folders complete · ${scan.pathsVisited} paths checked|">0 paths checked</p>
+    <div class="scan-stat-grid"><div><strong id="scanVideosFound" th:text="${scan.videosFound}">0</strong><span>Videos found</span></div><div><strong id="scanAdded" th:text="${scan.added}">0</strong><span>Added</span></div><div><strong id="scanUpdated" th:text="${scan.updated}">0</strong><span>Updated</span></div><div><strong id="scanRemoved" th:text="${scan.removed}">0</strong><span>Removed</span></div><div><strong id="scanIssueCount" th:text="${scan.issueCount}">0</strong><span>Scan issues</span></div></div>
+  </section>
+
+  <section class="review-section"><div class="library-shelf-heading"><div><p class="eyebrow">OPTIONAL TMDB REFERENCES</p><h2>Poster matches to review</h2></div><span th:text="${#lists.size(posterTargets)} + ' titles'">0 titles</span></div>
+    <p class="section-hint">We don’t replace an existing match automatically. Search and choose a result to apply it to a movie or every episode in a series.</p>
+    <div class="review-list" th:if="${!#lists.isEmpty(posterTargets)}"><article class="review-row" th:each="target : ${posterTargets}"><div class="review-row-copy"><strong th:text="${target.title}">Dark</strong><span th:text="|${target.mediaType == 'TV' ? 'Series' : 'Movie'} · ${target.fileCount} local file(s)${target.matched ? ' · currently linked: ' + target.currentMatch : ' · no TMDB link'}|">Series · no TMDB link</span></div><a class="button button-small" th:href="@{/library/review/posters(mediaId=${target.mediaId})}" th:text="${target.matched ? 'Review match' : 'Find poster'}">Find poster</a></article></div>
+    <div class="empty-panel compact-empty" th:if="${#lists.isEmpty(posterTargets)}"><h2>All current matches were reviewed</h2><p>New unmatched titles will appear after the next scan.</p></div>
+    <p class="settings-hint" th:unless="${tmdbConfigured}">TMDB is not configured. Poster search remains optional; local playback does not depend on it.</p>
+  </section>
+
+  <section class="review-section"><div class="library-shelf-heading"><div><p class="eyebrow">POSSIBLE DUPLICATES</p><h2>Files with same name and size</h2></div><span th:text="${#lists.size(duplicates)} + ' groups'">0 groups</span></div>
+    <p class="section-hint">These are suggestions only. No files or library entries are removed here.</p>
+    <div class="review-list" th:if="${!#lists.isEmpty(duplicates)}"><article class="review-row review-row-stacked" th:each="group : ${duplicates}"><div class="review-row-copy"><strong th:text="${group.fileName}">same-file.mkv</strong><span th:text="|${#numbers.formatDecimal(group.fileSize / 1048576.0, 1, 1)} MB · ${#lists.size(group.paths)} files|">0 MB · 2 files</span></div><ul class="review-path-list"><li th:each="path : ${group.paths}" th:text="${path}">/media/movie.mkv</li></ul></article></div>
+    <div class="empty-panel compact-empty" th:if="${#lists.isEmpty(duplicates)}"><h2>No possible duplicates</h2><p>Duplicate suggestions compare file name and exact size.</p></div>
+  </section>
+
+  <section class="review-section"><div class="library-shelf-heading"><div><p class="eyebrow">SERIES GROUPS</p><h2>Review similar names</h2></div><span th:text="${#lists.size(seriesGroups)} + ' groups'">0 groups</span></div>
+    <p class="section-hint">Different names remain separate unless you explicitly group them. A suggestion only appears when names look close; confirm it before merging.</p>
+    <div class="review-list" th:if="${!#lists.isEmpty(seriesGroups)}"><article class="review-row review-row-stacked" th:each="group : ${seriesGroups}"><div class="review-row-copy"><strong th:text="${group.title}">East of Eden</strong><span th:text="${group.episodeCount} + ' episodes'">0 episodes</span></div>
+      <div class="series-merge-form" th:if="${!#lists.isEmpty(group.variants)}"><form th:action="@{/library/review/series/merge}" method="post"><input type="hidden" name="aliasTitle" th:value="${group.title}"><label><span>Group this name under</span><select name="canonicalTitle"><option th:each="variant : ${group.variants}" th:value="${variant}" th:text="${variant}">East of Eden (year)</option></select></label><button class="button button-small" type="submit">Merge after review</button></form></div>
+    </article></div>
+    <div class="empty-panel compact-empty" th:if="${#lists.isEmpty(seriesGroups)}"><h2>No local series scanned yet</h2><p>Series suggestions will appear as episodes are found.</p></div>
+  </section>
+
+  <section class="review-section" th:if="${!#lists.isEmpty(aliases)}"><div class="library-shelf-heading"><div><p class="eyebrow">MANUAL GROUPING RULES</p><h2>Current series merges</h2></div><span th:text="${#lists.size(aliases)} + ' rules'">0 rules</span></div>
+    <div class="review-list"><article class="review-row" th:each="alias : ${aliases}"><div class="review-row-copy"><strong th:text="${alias.aliasTitle}">Alias</strong><span th:text="|Grouped under ${alias.canonicalTitle}|">Grouped under canonical</span></div><form th:action="@{/library/review/series/unmerge}" method="post"><input type="hidden" name="aliasTitle" th:value="${alias.aliasTitle}"><button class="button button-quiet button-small" type="submit">Undo grouping</button></form></article></div>
+  </section>
+
+  <section class="review-section"><div class="library-shelf-heading"><div><p class="eyebrow">UNREADABLE OR SKIPPED PATHS</p><h2>Scan issues</h2></div><span th:text="${scan.issueCount} + ' issues'">0 issues</span></div>
+    <div class="review-list" th:if="${!#lists.isEmpty(scan.issues)}"><article class="review-row review-row-stacked" th:each="issue : ${scan.issues}"><div class="review-row-copy"><strong th:text="${issue.category}">Unreadable path</strong><span th:text="${issue.message}">Will retry.</span></div><code class="review-path" th:text="${issue.path}">/media/path</code></article></div>
+    <div class="empty-panel compact-empty" th:if="${#lists.isEmpty(scan.issues)}"><h2>No scan issues recorded</h2><p>Missing folders and unreadable paths will be listed here while keeping saved library data safe.</p></div>
+  </section>
+</main>
+</body></html>
