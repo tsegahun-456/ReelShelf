@@ -9,7 +9,7 @@ RUN ./mvnw -B -DskipTests package
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN apk add --no-cache ffmpeg && addgroup -S app && adduser -S app -G app
-COPY --from=build /workspace/target/movie-watchlist-web-0.2.0.jar app.jar
+COPY --from=build /workspace/target/movie-watchlist-web-0.2.1.jar app.jar
 USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

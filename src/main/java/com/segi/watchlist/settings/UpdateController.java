@@ -9,6 +9,8 @@ import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.info.BuildProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -16,10 +18,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @RestController
 @RequestMapping("/api/settings/update")
 public class UpdateController {
+
+    private static final Logger log = LoggerFactory.getLogger(UpdateController.class);
 
     private final BuildProperties buildProperties;
     private final RestClient restClient;
@@ -41,9 +46,13 @@ public class UpdateController {
     @GetMapping("/check")
     public UpdateCheck check() {
         String current = buildProperties != null ? buildProperties.getVersion() : "unknown";
+        String[] repositoryParts = repository == null ? new String[0] : repository.trim().split("/", 2);
+        if (repositoryParts.length != 2 || repositoryParts[0].isBlank() || repositoryParts[1].isBlank()) {
+            return new UpdateCheck(current, null, false, null, "GitHub update repository is not configured correctly.");
+        }
         try {
             Map<String, Object> release = restClient.get()
-                    .uri("/repos/{repo}/releases/latest", repository)
+                    .uri("/repos/{owner}/{name}/releases/latest", repositoryParts[0], repositoryParts[1])
                     .header(HttpHeaders.ACCEPT, "application/vnd.github+json")
                     .retrieve()
                     .body(new ParameterizedTypeReference<Map<String, Object>>() {});
@@ -59,7 +68,7 @@ public class UpdateController {
 
         try {
             List<Map<String, Object>> tags = restClient.get()
-                    .uri("/repos/{repo}/tags", repository)
+                    .uri("/repos/{owner}/{name}/tags", repositoryParts[0], repositoryParts[1])
                     .header(HttpHeaders.ACCEPT, "application/vnd.github+json")
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
@@ -72,7 +81,14 @@ public class UpdateController {
                     .max(Comparator.comparing(tag -> normalize(tag), UpdateController::compareVersions))
                     .orElseThrow();
             return result(current, latest, "https://github.com/" + repository + "/tree/" + latest);
+        } catch (RestClientResponseException exception) {
+            log.warn("GitHub update check returned HTTP {} for {}.", exception.getStatusCode().value(), repository);
+            String message = exception.getStatusCode().value() == 404
+                    ? "GitHub could not find this update repository. Check its owner/name in the app configuration."
+                    : "GitHub returned HTTP " + exception.getStatusCode().value() + " while checking for updates.";
+            return new UpdateCheck(current, null, false, null, message);
         } catch (Exception exception) {
+            log.warn("Could not reach GitHub to check ReelShelf updates for {}: {}", repository, exception.toString());
             return new UpdateCheck(current, null, false, null,
                     "Could not reach GitHub to check for updates. Check the internet connection and try again.");
         }

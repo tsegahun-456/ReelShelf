@@ -8,7 +8,7 @@ IMAGE_DIR="$BUILD_ROOT/image"
 BUNDLE_NAME="Movie-Watchlist-Linux-Portable"
 BUNDLE_DIR="$BUILD_ROOT/$BUNDLE_NAME"
 ARCHIVE="$BUILD_ROOT/$BUNDLE_NAME.tar.gz"
-APP_VERSION="0.2.0"
+APP_VERSION="0.2.1"
 APP_JAR="movie-watchlist-web-${APP_VERSION}.jar"
 APP_IMAGE_JAR="movie-watchlist-web.jar"
 

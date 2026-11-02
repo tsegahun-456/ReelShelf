@@ -67,7 +67,7 @@ For a local browser preview on port `8081`, load the local database settings fro
 ```sh
 set -a; . ./.env; set +a
 ./mvnw package
-java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.0.jar --server.port=8081
+java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.1.jar --server.port=8081
 ```
 
 The preview uses PostgreSQL and keeps accounts and lists when the app restarts. Configure `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` for your local database in `.env`.
