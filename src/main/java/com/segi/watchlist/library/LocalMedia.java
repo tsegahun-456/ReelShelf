@@ -43,7 +43,21 @@ public class LocalMedia {
 
     protected LocalMedia() {}
 
-    void updateFrom(MediaScanner.MediaFile file) {
+    /** Applies a freshly scanned file; returns true only when a field actually changed. */
+    boolean updateFrom(MediaScanner.MediaFile file) {
+        boolean changed = id == null
+                || !file.filePath().equals(filePath)
+                || !java.util.Objects.equals(file.fileName(), fileName)
+                || (titleOverride == null || titleOverride.isBlank())
+                        && !java.util.Objects.equals(file.displayTitle(), displayTitle)
+                || !java.util.Objects.equals(file.mediaKind(), mediaKind)
+                || !java.util.Objects.equals(file.seriesTitle(), seriesTitle)
+                || !java.util.Objects.equals(file.seasonNumber(), seasonNumber)
+                || !java.util.Objects.equals(file.episodeNumber(), episodeNumber)
+                || !java.util.Objects.equals(file.episodeTitle(), episodeTitle)
+                || !java.util.Objects.equals(file.subtitlePath(), subtitlePath)
+                || file.fileSize() != fileSize
+                || !java.util.Objects.equals(file.modifiedAt(), modifiedAt);
         if (id == null || !file.filePath().equals(filePath)) filePath = file.filePath();
         fileName = file.fileName();
         if (titleOverride == null || titleOverride.isBlank()) displayTitle = file.displayTitle();
@@ -55,7 +69,8 @@ public class LocalMedia {
         subtitlePath = file.subtitlePath();
         fileSize = file.fileSize();
         modifiedAt = file.modifiedAt();
-        lastSeenAt = Instant.now();
+        if (changed) lastSeenAt = Instant.now();
+        return changed;
     }
 
     public void rename(String title) {
@@ -84,6 +99,7 @@ public class LocalMedia {
     public String getEpisodeTitle() { return episodeTitle; }
     public String getSubtitlePath() { return subtitlePath; }
     public long getFileSize() { return fileSize; }
+    public Instant getModifiedAt() { return modifiedAt; }
     public Long getTmdbId() { return tmdbId; }
     public String getTmdbMediaType() { return tmdbMediaType; }
     public String getTmdbTitle() { return tmdbTitle; }

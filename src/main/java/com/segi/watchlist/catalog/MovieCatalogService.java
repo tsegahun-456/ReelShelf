@@ -1,10 +1,12 @@
 package com.segi.watchlist.catalog;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -16,7 +18,11 @@ public class MovieCatalogService {
 
     public MovieCatalogService(@Value("${tmdb.base-url}") String baseUrl,
                                @Value("${tmdb.api-key:}") String apiKey) {
-        this.tmdb = RestClient.builder().baseUrl(baseUrl).build();
+        // Bounded timeouts: a stalled TMDB connection must never hang a page load.
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
+        requestFactory.setReadTimeout(Duration.ofSeconds(4));
+        this.tmdb = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build();
         this.apiKey = apiKey == null ? "" : apiKey.trim();
     }
 

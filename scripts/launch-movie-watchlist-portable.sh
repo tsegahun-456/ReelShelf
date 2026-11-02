@@ -73,7 +73,7 @@ if is_listening; then
   exit 0
 fi
 
-mapfile -t APP_JARS < <(find "$APP_IMAGE/lib/app" -maxdepth 1 -type f -name 'movie-watchlist-web-*.jar' ! -name '*.original' -print)
+mapfile -t APP_JARS < <(find "$APP_IMAGE/lib/app" -maxdepth 1 -type f -name 'movie-watchlist-web*.jar' ! -name '*.original' -print)
 if (( ${#APP_JARS[@]} != 1 )); then
   notify_user "The app JAR is missing from the bundle. Re-extract the portable app folder."
   exit 1

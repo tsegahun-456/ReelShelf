@@ -46,14 +46,17 @@ public class MediaRootService {
     @PostConstruct
     void seedFromConfiguration() {
         try {
-            if (roots.count() > 0 || seedRootsText == null || seedRootsText.isBlank()) return;
-            List<String> seeded = new ArrayList<>();
-            Arrays.stream(seedRootsText.split(",")).map(String::trim)
-                    .filter(value -> !value.isBlank())
-                    .map(value -> normalizeQuietly(value))
-                    .filter(value -> value != null && !isSystemDirectory(value))
-                    .forEach(value -> { roots.save(new MediaScanRoot(value)); seeded.add(value); });
-            if (!seeded.isEmpty()) log.info("Seeded media scan folders from configuration: {}", seeded);
+            if (roots.count() == 0 && seedRootsText != null && !seedRootsText.isBlank()) {
+                List<String> seeded = new ArrayList<>();
+                Arrays.stream(seedRootsText.split(",")).map(String::trim)
+                        .filter(value -> !value.isBlank())
+                        .map(value -> normalizeQuietly(value))
+                        .filter(value -> value != null && !isSystemDirectory(value))
+                        .forEach(value -> { roots.save(new MediaScanRoot(value)); seeded.add(value); });
+                if (!seeded.isEmpty()) log.info("Seeded media scan folders from configuration: {}", seeded);
+            }
+            // Heal leftovers from earlier runs (a folder removed while a scan was in flight).
+            pruneOrphanRows();
         } catch (RuntimeException exception) {
             log.warn("Could not seed media scan folders from configuration: {}", exception.getMessage());
         }
@@ -123,9 +126,38 @@ public class MediaRootService {
         deleteCollectedMedia(path);
     }
 
+    /** True while the folder is still on the scan list; lets an in-flight walk stop when it is removed. */
+    public boolean isConfigured(Path root) {
+        return roots.existsById(root.toString());
+    }
+
+    /**
+     * Deletes collected titles whose folder is no longer configured. Covers every way rows can go
+     * stale: a folder removed while a scan was still walking it, or leftovers from earlier runs.
+     */
+    public int pruneOrphanRows() {
+        try {
+            List<String> prefixes = roots.findAllByOrderByPathAsc().stream()
+                    .map(row -> prefixFor(row.getPath()))
+                    .toList();
+            if (prefixes.isEmpty()) return 0;
+            List<LocalMedia> orphans = media.findAllByOrderByDisplayTitleAsc().stream()
+                    .filter(item -> prefixes.stream().noneMatch(prefix -> item.getFilePath().startsWith(prefix)))
+                    .toList();
+            if (orphans.isEmpty()) return 0;
+            media.deleteAll(orphans);
+            posterCache.removeUnreferencedPosters();
+            log.info("Removed {} local titles collected outside the configured folders.", orphans.size());
+            return orphans.size();
+        } catch (RuntimeException exception) {
+            log.warn("Could not prune local titles outside the configured folders: {}", exception.getMessage());
+            return 0;
+        }
+    }
+
     private void deleteCollectedMedia(String root) {
         try {
-            String prefix = root.endsWith(File.separator) ? root : root + File.separator;
+            String prefix = prefixFor(root);
             List<LocalMedia> stale = media.findAllByOrderByDisplayTitleAsc().stream()
                     .filter(item -> item.getFilePath().equals(root)
                             || item.getFilePath().startsWith(prefix))
@@ -184,11 +216,24 @@ public class MediaRootService {
 
     private long countMedia(String path) {
         try {
-            String prefix = path.endsWith(File.separator) ? path : path + File.separator;
-            return media.countByFilePathStartingWith(prefix);
+            return media.countByFilePathStartingWith(prefixFor(path));
         } catch (RuntimeException exception) {
             return 0;
         }
+    }
+
+    /**
+     * Row paths are stored real-path'ed by the scanner, so folder prefixes are resolved the same
+     * way before comparing (symlinks and Windows case differences cannot make matches miss).
+     */
+    private static String prefixFor(String path) {
+        String resolved = path;
+        try {
+            resolved = Paths.get(path).toRealPath().toString();
+        } catch (IOException | InvalidPathException ignored) {
+            // An unplugged folder keeps its configured path as the prefix.
+        }
+        return resolved.endsWith(File.separator) ? resolved : resolved + File.separator;
     }
 
     private static Path homeDirectory() {

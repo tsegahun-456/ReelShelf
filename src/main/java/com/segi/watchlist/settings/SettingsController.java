@@ -3,6 +3,7 @@ package com.segi.watchlist.settings;
 import com.segi.watchlist.library.MediaRootService;
 import com.segi.watchlist.library.MediaScanner;
 import java.util.concurrent.CompletableFuture;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,8 +26,10 @@ public class SettingsController {
     @GetMapping("/settings")
     public String settings(Model model, Authentication authentication) {
         model.addAttribute("activePage", "settings");
-        model.addAttribute("signedIn", true);
-        model.addAttribute("currentEmail", authentication == null ? "" : authentication.getName());
+        boolean signedIn = authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
+        model.addAttribute("signedIn", signedIn);
+        model.addAttribute("currentEmail", signedIn ? authentication.getName() : "");
         model.addAttribute("folders", mediaRoots.folders());
         model.addAttribute("suggestions", mediaRoots.suggestions());
         model.addAttribute("homeFolder", mediaRoots.homeFolder());

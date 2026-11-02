@@ -1,0 +1,49 @@
+name: Build portable release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build Linux portable package
+        run: ./scripts/package-linux-portable.sh
+
+      - name: Build Windows portable package
+        run: ./scripts/package-windows-portable.sh
+
+      - name: Create checksums
+        run: |
+          (cd target/portable-linux && sha256sum Movie-Watchlist-Linux-Portable.tar.gz \
+            > Movie-Watchlist-Linux-Portable.tar.gz.sha256)
+
+      - name: Publish release with portable downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$GITHUB_REF_NAME"
+          linux_archive=target/portable-linux/Movie-Watchlist-Linux-Portable.tar.gz
+          linux_checksum=target/portable-linux/Movie-Watchlist-Linux-Portable.tar.gz.sha256
+          windows_archive=target/portable-windows/Movie-Watchlist-Windows-Portable.zip
+          windows_checksum=target/portable-windows/Movie-Watchlist-Windows-Portable.zip.sha256
+          if gh release view "$version" >/dev/null 2>&1; then
+            gh release upload "$version" "$linux_archive" "$linux_checksum" "$windows_archive" "$windows_checksum" --clobber
+          else
+            gh release create "$version" "$linux_archive" "$linux_checksum" "$windows_archive" "$windows_checksum" \
+              --title "ReelShelf $version" --generate-notes
+          fi

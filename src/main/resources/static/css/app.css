@@ -1,4 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* Self-hosted DM Sans + Space Grotesk (latin, variable) — nothing render-blocks on fonts.googleapis.com. */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../fonts/dm-sans.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../fonts/space-grotesk.woff2') format('woff2');
+}
 
 :root {
   color-scheme: dark;
@@ -259,6 +273,8 @@ h1, h2, h3, p { margin-top: 0; }
 .text-button { padding: 4px 1px; color: #ff8991; border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 10px; }
 .text-button:hover { color: white; }
 .library-empty-inline { min-height: 100px; display: flex; align-items: center; gap: 13px; padding: 18px; color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; background: rgba(20,16,21,.48); }
+.library-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 22px 0 6px; }
+.library-pagination-status { color: var(--dim); font-size: 12px; letter-spacing: .04em; }
 .library-empty-inline > span { color: #ff7580; font-size: 24px; }
 .library-empty-inline p { margin: 0; font-size: 12px; }
 .series-library-page > .text-link { display: inline-block; margin: 0 0 23px; }

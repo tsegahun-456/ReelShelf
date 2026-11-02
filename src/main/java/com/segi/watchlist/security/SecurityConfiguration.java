@@ -18,8 +18,9 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 
 @Configuration
 public class SecurityConfiguration {
-    /** Cookie name used by Spring Security's remember-me services (its built-in default). */
-    static final String REMEMBER_ME_COOKIE = "REMEMBERME";
+    /** Cookie name used by Spring Security's persistent remember-me services. */
+    static final String REMEMBER_ME_COOKIE = "remember-me";
+    private static final String LEGACY_REMEMBER_ME_COOKIE = "REMEMBERME";
 
     private final boolean publicLocalLibrary;
     private final int rememberMeValiditySeconds;
@@ -60,25 +61,28 @@ public class SecurityConfiguration {
         return http
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests(authorize -> {
-                    authorize.requestMatchers("/", "/search", "/movie/**", "/tv/**", "/login", "/signup", "/css/**", "/js/**", "/images/**", "/manifest.webmanifest", "/sw.js", "/offline.html", "/error", "/actuator/health").permitAll();
-                    if (publicLocalLibrary) authorize.requestMatchers("/library/**").permitAll();
+                    authorize.requestMatchers("/", "/search", "/movie/**", "/tv/**", "/login", "/signup", "/css/**", "/js/**", "/images/**", "/fonts/**", "/manifest.webmanifest", "/sw.js", "/offline.html", "/error", "/actuator/health").permitAll();
+                    if (publicLocalLibrary) authorize.requestMatchers(
+                            "/library/**", "/settings", "/settings/**", "/api/settings/update/**").permitAll();
                     authorize.anyRequest().authenticated();
                 })
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .successHandler(new LoginSuccessHandler(credentials))
+                        .successHandler(new LoginSuccessHandler(credentials, persistentTokenRepository))
                         .permitAll())
                 // Opt-in "Keep me signed in": a persistent cookie backed by the database,
                 // restoring the Firebase session (via the encrypted refresh token) after restarts.
                 .rememberMe(remember -> remember
                         .key(persistentSignInKey.hmacKey())
+                        .rememberMeParameter(LoginSuccessHandler.REMEMBER_ME_PARAMETER)
+                        .rememberMeCookieName(REMEMBER_ME_COOKIE)
                         .tokenRepository(persistentTokenRepository)
                         .userDetailsService(rememberMeUserDetailsService)
                         .tokenValiditySeconds(rememberMeValiditySeconds)
                         .useSecureCookie(false))
                 .logout(logout -> logout
                         .logoutSuccessUrl("/")
-                        .deleteCookies(REMEMBER_ME_COOKIE)
+                        .deleteCookies(REMEMBER_ME_COOKIE, LEGACY_REMEMBER_ME_COOKIE)
                         .addLogoutHandler((request, response, authentication) -> {
                             if (authentication != null
                                     && authentication.getPrincipal() instanceof FirebaseSessionPrincipal principal) {

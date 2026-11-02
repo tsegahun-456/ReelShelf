@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 /**
  * Completes a successful sign-in like the previous default redirect, and stores
@@ -21,9 +22,11 @@ public class LoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
     static final String REMEMBER_ME_PARAMETER = "remember-me";
 
     private final FirebaseCredentialService credentials;
+    private final PersistentTokenRepository persistentTokens;
 
-    public LoginSuccessHandler(FirebaseCredentialService credentials) {
+    public LoginSuccessHandler(FirebaseCredentialService credentials, PersistentTokenRepository persistentTokens) {
         this.credentials = credentials;
+        this.persistentTokens = persistentTokens;
         setDefaultTargetUrl("/");
         setAlwaysUseDefaultTargetUrl(true);
     }
@@ -31,13 +34,15 @@ public class LoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
-        if (authentication.getPrincipal() instanceof FirebaseSessionPrincipal principal) {
-            if (rememberMeRequested(request)) {
+        if (rememberMeRequested(request)) {
+            if (authentication.getPrincipal() instanceof FirebaseSessionPrincipal principal) {
                 credentials.remember(principal);
                 log.info("Sign-in will be remembered on this computer for uid={}.", principal.uid());
-            } else {
-                credentials.forgetQuietly(principal.email());
             }
+        } else {
+            String username = authentication.getName();
+            credentials.forgetQuietly(username);
+            persistentTokens.removeUserTokens(username);
         }
         super.onAuthenticationSuccess(request, response, authentication);
     }

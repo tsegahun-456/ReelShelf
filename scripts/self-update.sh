@@ -16,17 +16,19 @@ git pull --ff-only
 echo "2/4 Building the updated jar..."
 ./mvnw -o -DskipTests package
 
-JAR="$ROOT/target/movie-watchlist-web-0.1.0-SNAPSHOT.jar"
-APP_JAR="$HOME/Documents/Codex/Movie-Watchlist-Linux-Installed/app-image/lib/app/movie-watchlist-web-0.1.0-SNAPSHOT.jar"
+JAR="$ROOT/target/movie-watchlist-web-0.2.0.jar"
+APP_DIR="$HOME/Documents/Codex/Movie-Watchlist-Linux-Installed/app-image/lib/app"
+mapfile -t INSTALLED_JARS < <(find "$APP_DIR" -maxdepth 1 -type f -name 'movie-watchlist-web*.jar' ! -name '*.original' -print 2>/dev/null || true)
+APP_JAR="${INSTALLED_JARS[0]:-}"
 
 echo "3/4 Updating the installed Linux app..."
-if [ -f "$APP_JAR" ]; then
+if [ -n "$APP_JAR" ] && [ -f "$APP_JAR" ]; then
   BACKUP="$APP_JAR.bak-$(date +%Y%m%d-%H%M%S)"
   cp "$APP_JAR" "$BACKUP"
   cp "$JAR" "$APP_JAR"
   echo "      Installed jar replaced (backup kept at $BACKUP)."
 else
-  echo "      No installed app found at $APP_JAR — skipped."
+  echo "      No installed ReelShelf JAR was found in $APP_DIR — skipped."
 fi
 
 echo "4/4 Done. Restart ReelShelf to load the update."

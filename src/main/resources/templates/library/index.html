@@ -31,7 +31,7 @@
   <section class="library-shelf" th:if="${kind == 'ALL' or kind == 'MOVIE'}">
     <div class="library-shelf-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Movies</h2></div><span th:text="${#lists.size(movies)} + ' titles'">0 titles</span></div>
     <div class="media-poster-grid" th:if="${!#lists.isEmpty(movies)}">
-      <article class="media-poster-card" th:each="movie : ${movies}">
+      <article class="media-poster-card" th:each="movie : ${pageMovies}">
         <a class="media-card-poster-link" th:href="@{/library/{id}/play(id=${movie.id})}" th:aria-label="|Play ${movie.displayTitle}|">
           <img class="media-card-poster" th:if="${movie.tmdbPosterPath != null and !#strings.isEmpty(movie.tmdbPosterPath)}"
                th:src="@{/library/posters/media/{id}(id=${movie.id},v=${movie.tmdbId})}" th:alt="|${movie.tmdbTitle} poster|" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
@@ -43,7 +43,7 @@
           <p class="show-overview" th:if="${movie.tmdbOverview != null and !#strings.isEmpty(movie.tmdbOverview)}" th:text="${movie.tmdbOverview}">Movie overview</p>
           <div class="media-card-actions"><a class="button button-small" th:href="@{/library/{id}/play(id=${movie.id})}">Play</a>
             <span class="media-subtitle-badge" th:if="${movie.subtitlePath != null}">CC</span>
-            <form th:if="${movie.tmdbId == null}" th:action="@{/library/{id}/tmdb-match(id=${movie.id})}" method="post" class="tmdb-match-form"><button class="text-button" type="submit">Find poster</button></form>
+            <form th:if="${movie.tmdbPosterPath == null or #strings.isEmpty(movie.tmdbPosterPath)}" th:action="@{/library/{id}/tmdb-match(id=${movie.id})}" method="post" class="tmdb-match-form"><button class="text-button" type="submit">Find poster</button></form>
             <details class="media-rename"><summary aria-label="Correct movie title">✎</summary><form th:action="@{/library/{id}/rename(id=${movie.id})}" method="post">
               <label th:for="|title-${movie.id}|">Correct display title</label><input type="text" name="title" th:id="|title-${movie.id}|" th:value="${movie.displayTitle}" maxlength="400" required><button class="button button-small" type="submit">Save title</button>
             </form></details>
@@ -51,6 +51,11 @@
         </div>
       </article>
     </div>
+    <nav class="library-pagination" th:if="${totalPages > 1}" aria-label="Library pages">
+      <a class="button button-small" th:if="${page > 1}" th:href="@{/library(page=${page - 1}, q=${query}, kind=${kind})}">← Previous</a>
+      <span class="library-pagination-status" th:text="|Page ${page} of ${totalPages}|">Page 1 of 1</span>
+      <a class="button button-small" th:if="${page < totalPages}" th:href="@{/library(page=${page + 1}, q=${query}, kind=${kind})}">Next →</a>
+    </nav>
     <div class="library-empty-inline" th:if="${#lists.isEmpty(movies)}"><span>▣</span><p>No movies match this search.</p></div>
   </section>
 
@@ -68,8 +73,8 @@
           <p th:text="${(show.seasonCount == 1 ? '1 season' : show.seasonCount + ' seasons') + ' · ' + (show.episodeCount == 1 ? '1 episode' : show.episodeCount + ' episodes')}">0 seasons · 0 episodes</p>
           <p class="show-overview" th:if="${show.overview != null and !#strings.isEmpty(show.overview)}" th:text="${show.overview}">Series overview</p>
           <div class="media-card-actions"><a class="button button-small" th:href="@{/library/series(title=${show.key})}">Browse episodes</a>
-            <form th:if="${show.tmdbId == null}" th:action="@{/library/series/tmdb-match}" method="post" class="tmdb-match-form">
-              <input type="hidden" name="title" th:value="${show.key}"><button class="text-button" type="submit">Find poster</button>
+            <form th:action="@{/library/series/tmdb-match}" method="post" class="tmdb-match-form">
+              <input type="hidden" name="title" th:value="${show.key}"><button class="text-button" type="submit" th:text="${show.posterPath == null or #strings.isEmpty(show.posterPath) ? 'Find poster' : 'Refresh poster'}">Find poster</button>
             </form>
           </div>
         </div>
@@ -77,6 +82,6 @@
     </div>
     <div class="library-empty-inline" th:if="${#lists.isEmpty(series)}"><span>▤</span><p>No series match this search.</p></div>
   </section>
-  <p class="library-note">The app checks your video drive every minute and refreshes optional TMDB references in the background. Poster images are kept in your local database for offline browsing. When the last video for a title is removed, its local entry and cached poster are cleaned up.</p>
+  <p class="library-note">The app refreshes your video folders every few minutes (use Scan now in Settings for an instant check) and refreshes optional TMDB references in the background. Poster images are kept in your local database for offline browsing. When the last video for a title is removed, its local entry and cached poster are cleaned up.</p>
 </main>
 </body></html>

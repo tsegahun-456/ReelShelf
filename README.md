@@ -17,6 +17,10 @@ A Spring Boot movie and TV discovery, watchlist, and local media library.
 
 The Flutter app remains unchanged and is the behavior reference while features are ported.
 
+## Download a portable build
+
+Download the Linux or Windows portable app and its SHA-256 checksum from the [latest ReelShelf release](https://github.com/tsegahun-456/ReelShelf/releases/latest). Each computer keeps its video library, database, and settings in that computer's user folders; replacing the app bundle does not remove them.
+
 ## Documentation
 
 Comprehensive engineering documentation is available in the [`docs/`](docs/) directory:
@@ -63,12 +67,12 @@ For a local browser preview on port `8081`, load the local database settings fro
 ```sh
 set -a; . ./.env; set +a
 ./mvnw package
-java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.1.0-SNAPSHOT.jar --server.port=8081
+java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.0.jar --server.port=8081
 ```
 
 The preview uses PostgreSQL and keeps accounts and lists when the app restarts. Configure `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` for your local database in `.env`.
 
-The preview scans `/media/tsega/New Volume` every minute (or the comma-separated paths in `MEDIA_ROOTS`). It ignores the Music, recycle-bin, and Windows system folders. New files appear in **My media** without copying video into PostgreSQL. TMDB posters and descriptions are matched in the background when the key and internet are available. Movies and series have separate shelves; opening a series shows season folders and sorted episodes. The player remembers playback position and offers speed, seek, keyboard, picture-in-picture, fullscreen/theater, and next-episode controls. It discovers embedded subtitles with `ffprobe` and converts selected text tracks to WebVTT with `ffmpeg`; matching `.srt` and `.vtt` sidecars remain available as well. Image-based DVD/PGS subtitles are listed but cannot be shown as selectable browser captions. Display titles can be corrected in the library. The local library preview is viewable without sign-in and binds to localhost only; account-backed watchlists still require sign-in.
+The preview scans the folders listed in Settings (seeded once from `MEDIA_ROOTS`) every five minutes by default (`MEDIA_SCAN_INTERVAL_MS`), or instantly when you click **Scan now**. It ignores the Music, recycle-bin, and Windows system folders. New files appear in **My media** without copying video into PostgreSQL. TMDB posters and descriptions are matched in the background when the key and internet are available. Movies and series have separate shelves; opening a series shows season folders and sorted episodes. The player remembers playback position and offers speed, seek, keyboard, picture-in-picture, fullscreen/theater, and next-episode controls. It discovers embedded subtitles with `ffprobe` and converts selected text tracks to WebVTT with `ffmpeg`; matching `.srt` and `.vtt` sidecars remain available as well. Image-based DVD/PGS subtitles are listed but cannot be shown as selectable browser captions. Display titles can be corrected in the library. The local library preview is viewable without sign-in and binds to localhost only; account-backed watchlists still require sign-in.
 
 Docker Compose installs FFmpeg in the application container and mounts `${MEDIA_HOST_ROOT}` read-only at `/media/library`; change that environment value if the partition is mounted elsewhere. If running the Spring app directly on the host instead of Docker, install FFmpeg and ensure both `ffmpeg` and `ffprobe` are on the app's `PATH` (or set `FFMPEG_COMMAND` and `FFPROBE_COMMAND`). The player will still show matching sidecar subtitle files if those tools are unavailable.
 

@@ -18,7 +18,7 @@ import org.springframework.http.HttpHeaders;
  * retry fails with a confusing 403.
  */
 public class NoStoreHtmlFilter implements Filter {
-    private static final Set<String> STATIC_PREFIXES = Set.of("/css/", "/js/", "/images/", "/offline.html");
+    private static final Set<String> STATIC_PREFIXES = Set.of("/css/", "/js/", "/images/", "/fonts/", "/offline.html");
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)

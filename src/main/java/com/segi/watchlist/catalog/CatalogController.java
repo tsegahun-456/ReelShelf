@@ -20,8 +20,12 @@ import org.springframework.web.client.RestClientException;
 
 @Controller
 public class CatalogController {
+    private static final java.time.Duration RAIL_TTL = java.time.Duration.ofMinutes(5);
+    private static final java.time.Duration RAIL_MISS_TTL = java.time.Duration.ofSeconds(30);
+
     private final MovieCatalogService catalog;
     private final WatchlistService watchlist;
+    private final Map<String, CachedRail> railCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public CatalogController(MovieCatalogService catalog, WatchlistService watchlist) {
         this.catalog = catalog;
@@ -32,7 +36,7 @@ public class CatalogController {
     public String home(Model model, Authentication authentication) {
         model.addAttribute("activePage", "home");
         addAccount(model, authentication);
-        List<MovieCard> trending = catalogList(model, catalog::trendingMovies);
+        List<MovieCard> trending = catalogList(model, () -> cachedRail("trending", catalog::trendingMovies));
         model.addAttribute("trending", trending);
         List<MediaRail> rails = new ArrayList<>();
         if (isSignedIn(authentication)) {
@@ -102,15 +106,36 @@ public class CatalogController {
 
     private void addRail(List<MediaRail> rails, Model model, String title,
                          Supplier<List<MovieCard>> titles) {
-        List<MovieCard> result = catalogList(model, titles);
+        List<MovieCard> result = catalogList(model, () -> cachedRail(title, titles));
         if (!result.isEmpty()) rails.add(new MediaRail(title, result));
     }
+
+    /**
+     * Serves home rails from a short-lived cache so the landing page is not eight serial TMDB calls
+     * on every hit; a failing rail is cached briefly as empty so an outage cannot stall repeat loads.
+     */
+    private List<MovieCard> cachedRail(String key, Supplier<List<MovieCard>> loader) {
+        java.time.Instant now = java.time.Instant.now();
+        CachedRail hit = railCache.get(key);
+        if (hit != null && now.isBefore(hit.expiresAt())) return hit.titles();
+        try {
+            List<MovieCard> titles = loader.get();
+            railCache.put(key, new CachedRail(titles, now.plus(RAIL_TTL)));
+            return titles;
+        } catch (RuntimeException exception) {
+            railCache.put(key, new CachedRail(List.of(), now.plus(RAIL_MISS_TTL)));
+            throw exception;
+        }
+    }
+
+    private record CachedRail(List<MovieCard> titles, java.time.Instant expiresAt) {}
 
     private void addRecommendations(List<MediaRail> rails, Model model, List<WatchlistEntry> savedTitles) {
         Map<String, MovieCard> recommendations = new LinkedHashMap<>();
         for (WatchlistEntry saved : savedTitles.stream().limit(3).toList()) {
             List<MovieCard> related = catalogValue(model,
-                    () -> catalog.recommendations(saved.getMediaType(), saved.getTmdbId()), List.of());
+                    () -> cachedRail("rec-" + saved.getMediaType() + "-" + saved.getTmdbId(),
+                            () -> catalog.recommendations(saved.getMediaType(), saved.getTmdbId())), List.of());
             for (MovieCard title : related) {
                 String key = title.mediaType() + ":" + title.id();
                 boolean alreadySaved = savedTitles.stream().anyMatch(item ->

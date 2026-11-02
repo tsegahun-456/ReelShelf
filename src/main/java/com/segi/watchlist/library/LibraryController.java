@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,8 +43,11 @@ public class LibraryController {
         this.embeddedSubtitles = embeddedSubtitles;
     }
 
+    static final int LIBRARY_PAGE_SIZE = 60;
+
     @GetMapping("/library")
-    public String library(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "ALL") String kind, Model model, Authentication authentication) {
+    public String library(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "ALL") String kind,
+                          @RequestParam(defaultValue = "1") int page, Model model, Authentication authentication) {
         String selectedKind = "MOVIE".equals(kind) || "SERIES".equals(kind) ? kind : "ALL";
         String needle = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
         List<LocalMedia> all = scanner.list("", "ALL");
@@ -53,16 +57,23 @@ public class LibraryController {
         List<LocalMediaSeries> series = groupSeries(episodes).stream()
                 .filter(show -> needle.isBlank() || (show.title() + " " + show.catalogTitle()).toLowerCase(Locale.ROOT).contains(needle))
                 .toList();
+        int totalPages = Math.max(1, (movies.size() + LIBRARY_PAGE_SIZE - 1) / LIBRARY_PAGE_SIZE);
+        int currentPage = Math.min(Math.max(page, 1), totalPages);
+        int from = (currentPage - 1) * LIBRARY_PAGE_SIZE;
+        List<LocalMedia> pageMovies = movies.subList(from, Math.min(from + LIBRARY_PAGE_SIZE, movies.size()));
         model.addAttribute("activePage", "library");
         model.addAttribute("signedIn", authentication != null);
         model.addAttribute("currentEmail", authentication == null ? "" : authentication.getName());
         model.addAttribute("query", q);
         model.addAttribute("kind", selectedKind);
         model.addAttribute("movies", movies);
+        model.addAttribute("pageMovies", pageMovies);
+        model.addAttribute("page", currentPage);
+        model.addAttribute("totalPages", totalPages);
         model.addAttribute("series", series);
-        model.addAttribute("movieCount", scanner.list("", "MOVIE").size());
-        model.addAttribute("episodeCount", scanner.list("", "EPISODE").size());
-        model.addAttribute("libraryCount", scanner.list("", "ALL").size());
+        model.addAttribute("movieCount", all.stream().filter(item -> "MOVIE".equals(item.getMediaKind())).count());
+        model.addAttribute("episodeCount", episodes.size());
+        model.addAttribute("libraryCount", all.size());
         model.addAttribute("seriesCount", groupSeries(episodes).size());
         return "library/index";
     }
@@ -76,7 +87,9 @@ public class LibraryController {
                         .thenComparing(LocalMedia::getEpisodeNumber, Comparator.nullsLast(Integer::compareTo)))
                 .toList();
         if (episodes.isEmpty()) throw new SeriesNotFoundException();
-        LocalMedia reference = episodes.stream().filter(item -> item.getTmdbId() != null).findFirst().orElse(episodes.get(0));
+        LocalMedia reference = episodes.stream().filter(item -> item.getTmdbId() != null && hasPosterPath(item.getTmdbPosterPath()))
+                .findFirst().orElseGet(() -> episodes.stream().filter(item -> item.getTmdbId() != null)
+                        .findFirst().orElse(episodes.get(0)));
         Map<Integer, List<LocalMedia>> bySeason = new TreeMap<>();
         for (LocalMedia episode : episodes) bySeason.computeIfAbsent(episode.getSeasonNumber() == null ? 0 : episode.getSeasonNumber(), ignored -> new ArrayList<>()).add(episode);
         List<LocalMediaSeason> seasons = bySeason.entrySet().stream()
@@ -150,13 +163,18 @@ public class LibraryController {
         try {
             List<MovieCard> choices = catalog.search(searchTitle, mediaType, null, year, null);
             if (choices.isEmpty() && year != null) choices = catalog.search(searchTitle, mediaType, null, null, null);
-            MovieCard best = choices.stream().max(java.util.Comparator.comparingDouble(card -> matchScore(searchTitle, card.title()))).orElse(null);
+            MovieCard best = choices.stream().filter(this::hasPoster)
+                    .max(java.util.Comparator.comparingDouble(card -> matchScore(searchTitle, card.title())))
+                    .orElse(null);
             if (best == null || matchScore(searchTitle, best.title()) < 0.55) {
                 redirect.addFlashAttribute("libraryWarning", "No close TMDB title match found. Your local video is still available; correct its title and try again.");
             } else {
-                item.attachTmdb(best);
-                repository.save(item);
-                redirect.addFlashAttribute("notice", "TMDB poster and details linked as a reference. Local playback remains independent.");
+                int updated = saveTmdbMatch(List.of(item.getId()), best);
+                if (updated == 0) {
+                    redirect.addFlashAttribute("libraryWarning", "The local file changed while matching. Try finding its poster again.");
+                } else {
+                    redirect.addFlashAttribute("notice", "TMDB poster and details linked as a reference. Local playback remains independent.");
+                }
             }
         } catch (MovieCatalogService.TmdbNotConfiguredException | RestClientException | IllegalStateException exception) {
             redirect.addFlashAttribute("libraryWarning", "TMDB is unavailable right now. Your local library and playback are unaffected.");
@@ -174,13 +192,20 @@ public class LibraryController {
             Integer year = releaseYear(title);
             List<MovieCard> choices = catalog.search(searchTitle, "TV", null, year, null);
             if (choices.isEmpty() && year != null) choices = catalog.search(searchTitle, "TV", null, null, null);
-            MovieCard best = choices.stream().max(Comparator.comparingDouble(card -> matchScore(searchTitle, card.title()))).orElse(null);
+            MovieCard best = choices.stream().filter(this::hasPoster)
+                    .max(Comparator.comparingDouble(card -> matchScore(searchTitle, card.title()))).orElse(null);
             if (best == null || matchScore(searchTitle, best.title()) < 0.55) {
-                redirect.addFlashAttribute("libraryWarning", "No close TMDB series match found. Your local episodes remain available.");
+                redirect.addFlashAttribute("libraryWarning", "No close TMDB series match with a poster was found. Your local episodes remain available.");
             } else {
-                episodes.forEach(item -> item.attachTmdb(best));
-                repository.saveAll(episodes);
-                redirect.addFlashAttribute("notice", "Series poster and details linked as a reference.");
+                List<Long> currentEpisodeIds = scanner.list("", "EPISODE").stream()
+                        .filter(item -> seriesKey(item.getSeriesTitle()).equals(seriesKey(title)))
+                        .map(LocalMedia::getId).toList();
+                int updated = saveTmdbMatch(currentEpisodeIds, best);
+                if (updated == 0) {
+                    redirect.addFlashAttribute("libraryWarning", "The episodes changed while matching. Try finding the series poster again.");
+                } else {
+                    redirect.addFlashAttribute("notice", "Series poster and details saved for " + updated + " episodes.");
+                }
             }
         } catch (MovieCatalogService.TmdbNotConfiguredException | RestClientException | IllegalStateException exception) {
             redirect.addFlashAttribute("libraryWarning", "TMDB is unavailable right now. Your local series and playback are unaffected.");
@@ -193,7 +218,9 @@ public class LibraryController {
         episodes.stream().sorted(Comparator.comparing(item -> Objects.toString(item.getSeriesTitle(), ""), String.CASE_INSENSITIVE_ORDER))
                 .forEach(item -> grouped.computeIfAbsent(seriesKey(item.getSeriesTitle()), ignored -> new ArrayList<>()).add(item));
         return grouped.values().stream().map(items -> {
-            LocalMedia reference = items.stream().filter(item -> item.getTmdbId() != null).findFirst().orElse(items.get(0));
+            LocalMedia reference = items.stream().filter(item -> item.getTmdbId() != null && hasPosterPath(item.getTmdbPosterPath()))
+                    .findFirst().orElseGet(() -> items.stream().filter(item -> item.getTmdbId() != null)
+                            .findFirst().orElse(items.get(0)));
             String title = reference.getSeriesTitle() == null ? reference.getDisplayTitle() : reference.getSeriesTitle();
             String catalogTitle = Objects.toString(reference.getTmdbTitle(), "");
             int seasonCount = (int) items.stream().map(item -> item.getSeasonNumber() == null ? 0 : item.getSeasonNumber()).distinct().count();
@@ -243,14 +270,28 @@ public class LibraryController {
         return 1.0 - (double) previous[b.length()] / Math.max(a.length(), b.length());
     }
 
+    private boolean hasPoster(MovieCard card) {
+        return hasPosterPath(card.posterPath());
+    }
+
+    private boolean hasPosterPath(String posterPath) {
+        return posterPath != null && !posterPath.isBlank();
+    }
+
+    private int saveTmdbMatch(Collection<Long> ids, MovieCard match) {
+        if (ids.isEmpty()) return 0;
+        return repository.updateTmdbMatchForIds(ids, match.id(), match.mediaType(), match.title(),
+                match.overview(), match.posterPath(), match.releaseDate());
+    }
+
     private String withoutReleaseYear(String value) {
-        return value == null ? "" : value.replaceAll("\\s*\\(?\\b(?:19|20)\\d{2}\\b\\)?\\s*$", "").trim();
+        return value == null ? "" : value.replaceAll("\\s+\\(?\\b(?:19|20)\\d{2}\\b\\)?\\s*$", "").trim();
     }
 
     private Integer releaseYear(String value) {
         if (value == null) return null;
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\b((?:19|20)\\d{2})\\b").matcher(value);
-        return matcher.find() ? Integer.valueOf(matcher.group(1)) : null;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^.*[\\s._-]+\\(?((?:19|20)\\d{2})\\)?\\s*$").matcher(value);
+        return matcher.matches() ? Integer.valueOf(matcher.group(1)) : null;
     }
 
     @GetMapping("/library/{id}/video")

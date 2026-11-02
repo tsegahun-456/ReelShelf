@@ -12,7 +12,7 @@ LAUNCHER="$APPLICATIONS_DIR/movie-watchlist-portable.desktop"
 mkdir -p "$APPLICATIONS_DIR"
 
 {
-  printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Movie Watchlist'
+  printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=ReelShelf'
   printf 'Comment=%s\n' 'Browse and play movies stored on this computer'
   printf 'Exec="%s/scripts/launch-movie-watchlist-portable.sh"\n' "$BUNDLE_DIR"
   printf '%s\n' 'Icon=video-x-generic' 'Terminal=false' 'StartupNotify=true' 'Categories=AudioVideo;Video;'

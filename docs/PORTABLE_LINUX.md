@@ -1,6 +1,6 @@
 # Linux portable bundle (no Docker)
 
-This Linux x86-64 package runs the Movie Watchlist Spring app with its own bundled Java runtime and an H2 file database. It does not need Docker, PostgreSQL, Maven, or a separately installed Java runtime. The existing Docker/PostgreSQL scripts continue to work for the development setup.
+This Linux x86-64 package runs the ReelShelf (Movie Watchlist) Spring app with its own bundled Java runtime and an H2 file database. It does not need Docker, PostgreSQL, Maven, or a separately installed Java runtime. The existing Docker/PostgreSQL scripts continue to work for the development setup.
 
 ## Build the bundle
 
@@ -16,7 +16,7 @@ The script writes a ready-to-extract folder and `.tar.gz` archive under `target/
 
 1. Extract `Movie-Watchlist-Linux-Portable.tar.gz` to a folder you can keep, such as `~/Applications/Movie-Watchlist`.
 2. In a terminal, enter that folder and run `./scripts/install-portable-desktop-launcher.sh` once.
-3. Search for **Movie Watchlist** in the desktop app menu. The first launch opens the app at `http://127.0.0.1:8080`.
+3. Search for **ReelShelf** in the desktop app menu. The first launch opens the app at `http://127.0.0.1:8080`.
 4. To stop it, run `./scripts/stop-movie-watchlist-portable.sh` from the extracted folder.
 
 On first launch the app creates `~/.config/movie-watchlist/movie-watchlist.env`. The `MEDIA_ROOTS` value there seeds the scan list the very first time the app starts. After that, use the in-app **Settings** page to add or remove folders: it can auto-detect `Videos`, `Downloads`, and mounted drives, offers *Scan everything on this PC*, and has a *Scan now* button — no restart or config edit needed. The database and logs stay under `~/.local/share/movie-watchlist/` and `~/.local/state/movie-watchlist/`, so removing/replacing the app bundle does not remove that data.

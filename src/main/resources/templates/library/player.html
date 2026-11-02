@@ -83,7 +83,7 @@
           <option value="small">Small</option><option value="standard" selected>Standard</option><option value="large">Large</option><option value="xlarge">Extra large</option>
         </select>
       </label>
-      <label class="auto-next" th:if="${nextItem != null}"><input type="checkbox" id="autoNext"><span>Play next episode automatically</span></label>
+      <label class="auto-next" th:if="${shelfKind == 'episode' and nextItem != null}"><input type="checkbox" id="autoNext"><span>Play next episode automatically</span></label>
     </div>
     <div class="player-codec-note" id="codecNote" hidden>Playback depends on the browser's supported video and audio codecs. Try opening this page in Firefox or Chrome if the file does not start.</div>
   </div>
