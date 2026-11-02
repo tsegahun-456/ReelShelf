@@ -35,7 +35,8 @@ git pull --ff-only
 printf '2/4 Building the updated jar...\n'
 ./mvnw -o -Dmaven.repo.local="$ROOT/.maven-cache/repository" -DskipTests package
 
-JAR="$ROOT/target/movie-watchlist-web-0.2.1.jar"
+APP_VERSION="$(sed -n '/<\/parent>/,$ { /<version>/{ s/.*<version>\([^<]*\)<\/version>.*/\1/p; q; } }' "$ROOT/pom.xml")"
+JAR="$ROOT/target/movie-watchlist-web-${APP_VERSION}.jar"
 mapfile -t INSTALLED_JARS < <(find "$APP_DIR" -maxdepth 1 -type f -name 'movie-watchlist-web*.jar' ! -name '*.original' -print 2>/dev/null || true)
 APP_JAR="${INSTALLED_JARS[0]:-}"
 

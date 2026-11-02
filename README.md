@@ -21,6 +21,8 @@ The Flutter app remains unchanged and is the behavior reference while features a
 
 Download the Linux or Windows portable app and its SHA-256 checksum from the [latest ReelShelf release](https://github.com/tsegahun-456/ReelShelf/releases/latest). Each computer keeps its video library, database, and settings in that computer's user folders; replacing the app bundle does not remove them.
 
+Both portable packages include a graphical updater. Linux users can open **Update ReelShelf** from the desktop app menu after running the bundled desktop-launcher setup once. Windows users can double-click `update-reelshelf.bat`. The updater displays download progress, saves paused downloads outside the app folder so they can resume after a PC restart, verifies the release checksum, and installs only when requested.
+
 ## Documentation
 
 Comprehensive engineering documentation is available in the [`docs/`](docs/) directory:
@@ -67,7 +69,7 @@ For a local browser preview on port `8081`, load the local database settings fro
 ```sh
 set -a; . ./.env; set +a
 ./mvnw package
-java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.1.jar --server.port=8081
+java -Dspring.profiles.active=preview -jar target/movie-watchlist-web-0.2.2.jar --server.port=8081
 ```
 
 The preview uses PostgreSQL and keeps accounts and lists when the app restarts. Configure `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` for your local database in `.env`.

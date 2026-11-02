@@ -25,6 +25,19 @@ INSTALL & RUN
 3. Open that address in Chrome (or any browser). Pin the tab like an app.
 4. To STOP the app: close its window (or press Ctrl+C there).
 
+UPDATE REELSHELF
+----------------
+- Double-click  update-reelshelf.bat  in this folder.
+- The updater window shows the download percentage, speed, and estimated time.
+- Choose "Pause and keep progress" to close it and resume later, even after a
+  PC restart. Choose "Quit and delete partial download" to discard the
+  unfinished download and stop the updater.
+- When the verified download is ready, choose "Install and restart".
+- If ReelShelf is running, close its command window first, then retry the
+  installation. Your database, settings, and media folders stay outside the
+  portable bundle and are preserved.
+- Download progress is stored in %LOCALAPPDATA%\ReelShelf\updates\.
+
 If the port is taken, edit PORT in the config file above and start again.
 
 

@@ -9,7 +9,7 @@ BUILD_ROOT="$ROOT/target/portable-windows"
 BUNDLE_NAME="Movie-Watchlist-Windows-Portable"
 BUNDLE_DIR="$BUILD_ROOT/$BUNDLE_NAME"
 ARCHIVE="$BUILD_ROOT/$BUNDLE_NAME.zip"
-APP_VERSION="0.2.1"
+APP_VERSION="$(sed -n '/<\/parent>/,$ { /<version>/{ s/.*<version>\([^<]*\)<\/version>.*/\1/p; q; } }' "$ROOT/pom.xml")"
 APP_JAR="movie-watchlist-web-${APP_VERSION}.jar"
 JRE_CACHE="$BUILD_ROOT/cache/windows-jre.zip"
 JRE_URL="https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse"
@@ -27,9 +27,12 @@ fi
 
 rm -rf "$BUNDLE_DIR"
 rm -f "$ARCHIVE" "$ARCHIVE.sha256"
-mkdir -p "$BUNDLE_DIR"
+mkdir -p "$BUNDLE_DIR" "$BUNDLE_DIR/updater"
 cp "$ROOT/target/$APP_JAR" "$BUNDLE_DIR/movie-watchlist-web.jar"
-cp "$ROOT/portable-windows/movie-watchlist.env.example" "$ROOT/portable-windows/README.txt" "$BUNDLE_DIR/"
+"$ROOT/scripts/build-updater.sh"
+cp "$ROOT/target/reelshelf-updater/reelshelf-updater.jar" "$BUNDLE_DIR/updater/"
+cp "$ROOT/portable-windows/movie-watchlist.env.example" "$ROOT/portable-windows/README.txt" \
+  "$ROOT/portable-windows/update-reelshelf.bat" "$BUNDLE_DIR/"
 # cmd expects CRLF line endings in .bat files.
 sed 's/$/\r/' "$ROOT/portable-windows/start-movie-watchlist.bat" > "$BUNDLE_DIR/start-movie-watchlist.bat"
 

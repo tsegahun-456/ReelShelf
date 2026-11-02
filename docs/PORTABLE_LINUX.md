@@ -17,7 +17,8 @@ The script writes a ready-to-extract folder and `.tar.gz` archive under `target/
 1. Extract `Movie-Watchlist-Linux-Portable.tar.gz` to a folder you can keep, such as `~/Applications/Movie-Watchlist`.
 2. In a terminal, enter that folder and run `./scripts/install-portable-desktop-launcher.sh` once.
 3. Search for **ReelShelf** in the desktop app menu. The first launch opens the app at `http://127.0.0.1:8080`.
-4. To stop it, run `./scripts/stop-movie-watchlist-portable.sh` from the extracted folder.
+4. Search for **Update ReelShelf** to open the graphical updater. It shows download progress and can pause while keeping the partial download. Reopen it later to resume, including after restarting the PC. **Quit and delete partial download** removes the unfinished download. The verified update installs only when you choose **Install and restart**.
+5. To stop the app, run `./scripts/stop-movie-watchlist-portable.sh` from the extracted folder.
 
 On first launch the app creates `~/.config/movie-watchlist/movie-watchlist.env`. The `MEDIA_ROOTS` value there seeds the scan list the very first time the app starts. After that, use the in-app **Settings** page to add or remove folders: it can auto-detect `Videos`, `Downloads`, and mounted drives, offers *Scan everything on this PC*, and has a *Scan now* button — no restart or config edit needed. The database and logs stay under `~/.local/share/movie-watchlist/` and `~/.local/state/movie-watchlist/`, so removing/replacing the app bundle does not remove that data.
 
@@ -32,3 +33,4 @@ Embedded subtitle tracks need `ffmpeg` and `ffprobe` available on the Linux comp
 * The archive is built for Linux x86-64. It includes its Java runtime but not media files, TMDB credentials, Firebase credentials, or FFmpeg.
 * Each computer scans and plays only paths configured on that computer. The video files are not copied into the app bundle.
 * The portable H2 database starts empty. It is separate from any existing PostgreSQL database and does not alter or migrate that database.
+* Update downloads are stored in `~/.cache/reelshelf/updates/`, outside the portable folder. Replacing the app bundle does not remove your database, settings, or saved download progress.

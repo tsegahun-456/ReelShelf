@@ -8,7 +8,7 @@ IMAGE_DIR="$BUILD_ROOT/image"
 BUNDLE_NAME="Movie-Watchlist-Linux-Portable"
 BUNDLE_DIR="$BUILD_ROOT/$BUNDLE_NAME"
 ARCHIVE="$BUILD_ROOT/$BUNDLE_NAME.tar.gz"
-APP_VERSION="0.2.1"
+APP_VERSION="$(sed -n '/<\/parent>/,$ { /<version>/{ s/.*<version>\([^<]*\)<\/version>.*/\1/p; q; } }' "$ROOT/pom.xml")"
 APP_JAR="movie-watchlist-web-${APP_VERSION}.jar"
 APP_IMAGE_JAR="movie-watchlist-web.jar"
 
@@ -22,7 +22,7 @@ if ! command -v jpackage >/dev/null 2>&1 || ! command -v java >/dev/null 2>&1; t
 fi
 
 cd "$ROOT"
-./mvnw -Dmaven.repo.local="$ROOT/.maven-cache/repository" -Pportable -DskipTests clean package
+./mvnw -Dmaven.repo.local="$ROOT/.maven-cache/repository" -Pportable -DskipTests package
 if [[ ! -f "$ROOT/target/$APP_JAR" ]]; then
   printf 'Maven did not produce the expected application JAR: %s\n' "$APP_JAR" >&2
   exit 1
@@ -41,16 +41,20 @@ jpackage \
   --input "$INPUT_DIR" \
   --main-jar "$APP_IMAGE_JAR" \
   --dest "$IMAGE_DIR" \
+  --add-modules java.desktop,java.net.http \
   --jlink-options '--strip-debug --no-man-pages --no-header-files' \
   --java-options '-Dspring.profiles.active=portable' \
   --java-options '-Dfile.encoding=UTF-8'
 
-mkdir -p "$BUNDLE_DIR/scripts" "$BUNDLE_DIR/docs"
+mkdir -p "$BUNDLE_DIR/scripts" "$BUNDLE_DIR/docs" "$BUNDLE_DIR/updater"
 mv "$IMAGE_DIR/MovieWatchlist" "$BUNDLE_DIR/app-image"
+"$ROOT/scripts/build-updater.sh"
 cp "$ROOT/movie-watchlist.env.example" "$BUNDLE_DIR/"
 cp "$ROOT/scripts/launch-movie-watchlist-portable.sh" \
    "$ROOT/scripts/stop-movie-watchlist-portable.sh" \
+   "$ROOT/scripts/update-reelshelf-portable.sh" \
    "$ROOT/scripts/install-portable-desktop-launcher.sh" "$BUNDLE_DIR/scripts/"
+cp "$ROOT/target/reelshelf-updater/reelshelf-updater.jar" "$BUNDLE_DIR/updater/"
 cp "$ROOT/docs/PORTABLE_LINUX.md" "$BUNDLE_DIR/docs/README.md"
 chmod 0755 "$BUNDLE_DIR/scripts/"*.sh
 tar -C "$BUILD_ROOT" -czf "$ARCHIVE" "$BUNDLE_NAME"
